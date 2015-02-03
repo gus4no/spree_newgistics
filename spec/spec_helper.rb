@@ -1,7 +1,7 @@
 # Run Coverage report
 require 'simplecov'
 require 'faraday'
-require 'vcr'
+
 SimpleCov.start do
   add_filter 'spec/dummy'
   add_group 'Controllers', 'app/controllers'
@@ -10,14 +10,6 @@ SimpleCov.start do
   add_group 'Models', 'app/models'
   add_group 'Views', 'app/views'
   add_group 'Libraries', 'lib'
-end
-
-VCR.configure do |c|
-  c.hook_into :faraday
-  c.configure_rspec_metadata!
-  c.cassette_library_dir                    = 'spec/cassettes'
-  c.allow_http_connections_when_no_cassette = true
-  c.default_cassette_options                = { allow_playback_repeats: true, match_requests_on: [:method, :uri, :headers] }
 end
 
 ##require workers
