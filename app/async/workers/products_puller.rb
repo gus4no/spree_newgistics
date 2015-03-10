@@ -143,16 +143,14 @@ module Workers
     end
 
     def disable_callbacks
-      Spree::Variant.skip_callback(:create, :after, :post_to_newgistics)
-      Spree::Variant.skip_callback(:update, :after, :post_to_newgistics)
+      Spree::Variant.skip_callback(:save, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:save, :after, :enqueue_product_for_reindex)
       Spree::Variant.skip_callback(:create, :before, :ensure_color_code)
       Spree::Product.skip_callback(:commit, :after, :enqueue_for_reindex)
     end
 
     def enable_callbacks
-      Spree::Variant.set_callback(:create, :after, :post_to_newgistics)
-      Spree::Variant.set_callback(:update, :after, :post_to_newgistics)
+      Spree::Variant.set_callback(:save, :after, :post_to_newgistics)
       Spree::Variant.set_callback(:save, :after, :enqueue_product_for_reindex)
       Spree::Variant.set_callback(:create, :before, :ensure_color_code)
       Spree::Product.set_callback(:commit, :after, :enqueue_for_reindex)
