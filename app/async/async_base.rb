@@ -20,9 +20,13 @@ class AsyncBase
         'This shipment has already been canceled.',
         'This shipment has already been returned.'
     ]
-    error = Nokogiri::XML(response.body).xpath('//error').text
+    error = parse_errors(response)
     success = Nokogiri::XML(response.body).xpath('//success').text == 'true'
     !success && error.present? && !not_really_errors.include?(error)
+  end
+
+  def parse_errors(response)
+    Nokogiri::XML(response.body).xpath('//error').text
   end
 
 
