@@ -11,7 +11,7 @@ module Workers
         if update_success?(response)
           order.update_column(:newgistics_status, state_change.newgistics_status)
         else
-          raise "Negistics error, response status: #{response.status} /n errors: #{parse_errors(response)}"
+          raise "Negistics error, response status: #{response.status} errors: #{parse_errors(response)}"
         end
       end
     end
