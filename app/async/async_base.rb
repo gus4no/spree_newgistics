@@ -35,7 +35,7 @@ class AsyncBase
   end
 
   def can_update_newgistics_state?(order, state_change)
-    states = ['canceled', 'returned']
+    states = ['returned']
     order.can_update_newgistics? && !states.include?(state_change.newgistics_status.downcase)
   end
 end
