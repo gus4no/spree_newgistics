@@ -38,7 +38,7 @@ Spree::Order.class_eval do
   end
 
   def can_update_newgistics?
-    states = ['canceled', 'returned', 'awaiting_return']
+    states = ['returned', 'awaiting_return']
     !states.include?(state.downcase) && posted_to_newgistics?
   end
 
