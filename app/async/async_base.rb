@@ -18,7 +18,9 @@ class AsyncBase
   def really_a_newgistics_error?(response)
     not_really_errors = [
         'This shipment has already been canceled.',
-        'This shipment has already been returned.'
+        'This shipment has already been returned.',
+        'Shipment with status \'CANCELED\' cannot be updated',
+        'Shipment with status \'RETURNED\' cannot be updated'
     ]
     error = parse_errors(response)
     success = Nokogiri::XML(response.body).xpath('//success').text == 'true'
