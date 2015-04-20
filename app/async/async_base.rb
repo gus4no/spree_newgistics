@@ -11,16 +11,18 @@ class AsyncBase
     raise e
   end
 
-  def update_success?(response)
-    response.status <= 299 && !really_a_newgistics_error?(response)
+  def update_success?(response,  order_number = nil)
+    response.status <= 299 && !really_a_newgistics_error?(response, order_number)
   end
 
-  def really_a_newgistics_error?(response)
+  def really_a_newgistics_error?(response, order_number)
     not_really_errors = [
         'This shipment has already been canceled.',
         'This shipment has already been returned.',
         'Shipment with status \'CANCELED\' cannot be updated',
-        'Shipment with status \'RETURNED\' cannot be updated'
+        'Shipment with status \'RETURNED\' cannot be updated',
+        'Shipment with status \'SHIPPED\' cannot be updated',
+        "Multiple shipments matching order ID '#{order_number}' found. Please update this shipment using the Newgistics Fulfillment Management Console instead."
     ]
     error = parse_errors(response)
     success = Nokogiri::XML(response.body).xpath('//success').text == 'true'
