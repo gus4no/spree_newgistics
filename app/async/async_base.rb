@@ -22,7 +22,7 @@ class AsyncBase
         'Shipment with status \'CANCELED\' cannot be updated',
         'Shipment with status \'RETURNED\' cannot be updated',
         'Shipment with status \'SHIPPED\' cannot be updated',
-        'Shipment with status \'VERIFIED\' cannot be updated'
+        'Shipment with status \'VERIFIED\' cannot be updated',
         "Multiple shipments matching order ID '#{order_number}' found. Please update this shipment using the Newgistics Fulfillment Management Console instead."
     ]
     error = parse_errors(response)
