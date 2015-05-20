@@ -25,14 +25,12 @@ module Workers
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
         if stock_item
          # check if variant is used in not synced orders
-          unsafe_to_update = false
           used_in_orders = 0
           not_in_ng = Spree::Order.not_in_newgistics
           not_in_ng.each do |order|
             order.line_items.each do |li|
               if li.variant_id == variant.id
-                unsafe_to_update = true
-                used_in_orders += li.quantity
+                unsynced_on_hold += li.quantity
               end
             end
           end
@@ -40,23 +38,15 @@ module Workers
           if (stock_item.count_on_hold != ng_pending_quantity)
             puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
             puts "Not safe to update: #{unsafe_to_update}, used in #{used_in_orders} unsynced orders"
-            if unsafe_to_update
-              stock_item.update_column(:count_on_hold, ng_pending_quantity + used_in_orders)
-            else
-              stock_item.update_column(:count_on_hold, ng_pending_quantity)
-            end
+            stock_item.update_column(:count_on_hold, ng_pending_quantity + unsynced_on_hold)
           end
 
           if (stock_item.count_on_hand != ng_available_quantity)
             puts "Not synced #{variant.sku} - #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
             puts "Not safe to update: #{unsafe_to_update}, used in #{used_in_orders} unsynced orders"
-            if unsafe_to_update
-              stock_item.update_column(:count_on_hand, ng_available_quantity - used_in_orders)
-            else
-              stock_item.update_column(:count_on_hand, ng_available_quantity)
-            end
+            stock_item.update_column(:count_on_hand, ng_available_quantity - unsynced_on_hold)
           end
-          
+
           variant.touch
         end
       end
