@@ -45,11 +45,11 @@ module Workers
           end
 
           if (stock_item.count_on_hand != ng_available_quantity)
-            puts "Not synced #{variant.sku} - #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
+            puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
             puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
           end
 
-          stock_item.update_column(
+          stock_item.update_columns(
             :count_on_hold, (ng_pending_quantity + unsynced_on_hold),
             :count_on_hand, (ng_available_quantity - unsynced_on_hold)
           )
