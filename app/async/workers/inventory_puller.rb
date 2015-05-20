@@ -37,13 +37,13 @@ module Workers
 
           if (stock_item.count_on_hold != ng_pending_quantity)
             puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
-            puts "Not safe to update: #{unsafe_to_update}, used in #{used_in_orders} unsynced orders"
+            puts "Variant is used #{used_in_orders} times in unsynced orders"
             stock_item.update_column(:count_on_hold, ng_pending_quantity + unsynced_on_hold)
           end
 
           if (stock_item.count_on_hand != ng_available_quantity)
             puts "Not synced #{variant.sku} - #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
-            puts "Not safe to update: #{unsafe_to_update}, used in #{used_in_orders} unsynced orders"
+            puts "Variant is used #{used_in_orders} times in unsynced orders"
             stock_item.update_column(:count_on_hand, ng_available_quantity - unsynced_on_hold)
           end
 
