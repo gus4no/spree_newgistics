@@ -48,8 +48,8 @@ module Workers
           end
 
           stock_item.update_columns(
-            :count_on_hold, (ng_pending_quantity + unsynced_on_hold),
-            :count_on_hand, (ng_available_quantity - unsynced_on_hold)
+            count_on_hold: (ng_pending_quantity + unsynced_on_hold),
+            count_on_hand: (ng_available_quantity - unsynced_on_hold)
           )
 
           variant.touch
