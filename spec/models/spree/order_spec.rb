@@ -62,7 +62,7 @@ describe Spree::Order do
       li.save
     end
 
-    it 'removes contnet after line item is updated' do
+    it 'removes content after line item is updated' do
       order.stub(:posted_to_newgistics?).and_return true
       order.should_receive(:remove_newgistics_shipment_content)
       li = order.line_items.first
@@ -70,10 +70,19 @@ describe Spree::Order do
       li.save
     end
 
-    it 'updates the shipment contents after creating a line item' do
+    it 'updates the shipment contents after destroying a line item' do
       order.stub(:posted_to_newgistics?).and_return true
       order.should_receive(:remove_newgistics_shipment_content)
       order.line_items.last.destroy
+    end
+
+    it 'updates the shipment contents after destroying a line item via controller' do
+      # see Spree::OrderContents#remove
+      order.stub(:posted_to_newgistics?).and_return true
+      order.should_receive(:remove_newgistics_shipment_content)
+      line_item = order.line_items.last
+      line_item.quantity = 0
+      line_item.destroy
     end
   end
 
