@@ -23,11 +23,15 @@ module Workers
         stock_item = variant.stock_items.find_by(stock_location_id: 1)
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
+
+        # preload orders with line_items
+        unsynced_orders = Spree::Order.not_in_newgistics.joins(:line_items)
+
         if stock_item
           # check if variant is used in not synced orders
           unsynced_on_hold = 0
-          not_in_ng = Spree::Order.not_in_newgistics
-          not_in_ng.each do |order|
+
+          unsynced_orders.each do |order|
             order.line_items.each do |li|
               if li.variant_id == variant.id
                 unsynced_on_hold += li.quantity
@@ -38,14 +42,17 @@ module Workers
           if (stock_item.count_on_hold != ng_pending_quantity)
             puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
             puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
-            stock_item.update_column(:count_on_hold, ng_pending_quantity + unsynced_on_hold)
           end
 
           if (stock_item.count_on_hand != ng_available_quantity)
             puts "Not synced #{variant.sku} - #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
             puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
-            stock_item.update_column(:count_on_hand, ng_available_quantity - unsynced_on_hold)
           end
+
+          stock_item.update_column(
+            :count_on_hold, (ng_pending_quantity + unsynced_on_hold),
+            :count_on_hand, (ng_available_quantity - unsynced_on_hold)
+          )
 
           variant.touch
         end
