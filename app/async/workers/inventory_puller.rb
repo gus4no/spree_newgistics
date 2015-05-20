@@ -21,6 +21,8 @@ module Workers
         ## Since newgistics is the only stock location, set 1 as stock_location id.
         ## TODO: add support for multiple stock locations.
         stock_item = variant.stock_items.find_by(stock_location_id: 1)
+        ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
+        ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
         if stock_item
           stock_item.update_column(:count_on_hold, newgistic_stock_item['pendingQuantity'].to_i)
           stock_item.update_column(:count_on_hand, newgistic_stock_item['availableQuantity'].to_i)
