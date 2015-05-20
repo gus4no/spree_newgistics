@@ -24,18 +24,16 @@ module Workers
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
 
-        # preload orders with line_items
-        unsynced_orders = Spree::Order.not_in_newgistics.joins(:line_items)
+        # preload line_items of unsynced orders
+        unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
 
         if stock_item
           # check if variant is used in not synced orders
           unsynced_on_hold = 0
 
-          unsynced_orders.each do |order|
-            order.line_items.each do |li|
-              if li.variant_id == variant.id
-                unsynced_on_hold += li.quantity
-              end
+          unsynced_line_items.each do |li|
+            if li.variant_id == variant.id
+              unsynced_on_hold += li.quantity
             end
           end
 
