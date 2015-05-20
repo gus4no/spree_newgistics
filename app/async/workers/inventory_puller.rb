@@ -15,6 +15,9 @@ module Workers
     end
 
     def update_inventory(newgistics_stock_items)
+      # preload line_items of unsynced orders
+      unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
+
       newgistics_stock_items.each do |newgistic_stock_item|
         variant = Spree::Variant.where(is_master: false).find_by(sku: newgistic_stock_item["sku"])
         next unless variant
@@ -23,9 +26,6 @@ module Workers
         stock_item = variant.stock_items.find_by(stock_location_id: 1)
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
-
-        # preload line_items of unsynced orders
-        unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
 
         if stock_item
           if (stock_item.count_on_hold != ng_pending_quantity || stock_item.count_on_hand != ng_available_quantity)
