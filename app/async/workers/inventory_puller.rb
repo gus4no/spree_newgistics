@@ -24,8 +24,8 @@ module Workers
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
         if stock_item
-         # check if variant is used in not synced orders
-          used_in_orders = 0
+          # check if variant is used in not synced orders
+          unsynced_on_hold = 0
           not_in_ng = Spree::Order.not_in_newgistics
           not_in_ng.each do |order|
             order.line_items.each do |li|
@@ -37,13 +37,13 @@ module Workers
 
           if (stock_item.count_on_hold != ng_pending_quantity)
             puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
-            puts "Variant is used #{used_in_orders} times in unsynced orders"
+            puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
             stock_item.update_column(:count_on_hold, ng_pending_quantity + unsynced_on_hold)
           end
 
           if (stock_item.count_on_hand != ng_available_quantity)
             puts "Not synced #{variant.sku} - #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
-            puts "Variant is used #{used_in_orders} times in unsynced orders"
+            puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
             stock_item.update_column(:count_on_hand, ng_available_quantity - unsynced_on_hold)
           end
 
