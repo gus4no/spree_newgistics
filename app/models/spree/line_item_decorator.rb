@@ -14,6 +14,7 @@ Spree::LineItem.class_eval do
 
   ## after a line item is removed to the order and if the order state is completed update newgistics  ## shipment.
   def remove_from_newgistics_shipment_contents(qty = self.quantity)
+    return if qty == 0 # see order_inventory_decorator
     order.remove_newgistics_shipment_content(variant.sku, qty)
   end
 
