@@ -56,6 +56,8 @@ module Workers
               stock_item.update_column(:count_on_hand, ng_available_quantity)
             end
           end
+          
+          variant.touch
         end
       end
     end
