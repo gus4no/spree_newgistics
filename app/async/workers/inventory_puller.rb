@@ -28,31 +28,28 @@ module Workers
         unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
 
         if stock_item
-          # check if variant is used in not synced orders
-          unsynced_on_hold = 0
+          if (stock_item.count_on_hold != ng_pending_quantity || stock_item.count_on_hand != ng_available_quantity)
+            # check if variant is used in not synced orders
+            unsynced_on_hold = 0
 
-          unsynced_line_items.each do |li|
-            if li.variant_id == variant.id
-              unsynced_on_hold += li.quantity
+            unsynced_line_items.each do |li|
+              if li.variant_id == variant.id
+                unsynced_on_hold += li.quantity
+              end
             end
-          end
 
-          if (stock_item.count_on_hold != ng_pending_quantity)
-            puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
+            puts "Not synced #{variant.sku}"
+            puts "On hold - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
+            puts "Avaliable - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
             puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
+
+            stock_item.update_columns(
+              count_on_hold: (ng_pending_quantity + unsynced_on_hold),
+              count_on_hand: (ng_available_quantity - unsynced_on_hold)
+            )
+
+            variant.touch
           end
-
-          if (stock_item.count_on_hand != ng_available_quantity)
-            puts "Not synced #{variant.sku} - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
-            puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
-          end
-
-          stock_item.update_columns(
-            count_on_hold: (ng_pending_quantity + unsynced_on_hold),
-            count_on_hand: (ng_available_quantity - unsynced_on_hold)
-          )
-
-          variant.touch
         end
       end
     end
