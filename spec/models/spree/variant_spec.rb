@@ -20,6 +20,7 @@ describe Spree::Order do
 
     before(:each) do
       Spree::Newgistics::HTTPManager.stub(:adapter).and_return(success_adapter)
+      Spree::Variant.any_instance.stub(:can_post_to_newgistics).and_return(true)
       @variant = create(:variant)
     end
 
