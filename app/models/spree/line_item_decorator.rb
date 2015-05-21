@@ -1,8 +1,10 @@
 Spree::LineItem.class_eval do
 
-  durably_decorate :update_inventory do
+  alias_method :old_update_inventory, :update_inventory
+
+  def update_inventory
     sync_to_newgistics_if_needed
-    original_update_inventory
+    old_update_inventory    
   end
 
   def sync_to_newgistics_if_needed
