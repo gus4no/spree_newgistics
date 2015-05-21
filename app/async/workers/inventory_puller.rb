@@ -17,6 +17,9 @@ module Workers
     def update_inventory(newgistics_stock_items)
       # preload line_items of unsynced orders
       unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
+      log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_inventory_import.log", 'a')
+
+      log << "\n\nStarting inventory sync process: #{Time.now}\n\n"
 
       newgistics_stock_items.each do |newgistic_stock_item|
         variant = Spree::Variant.where(is_master: false).find_by(sku: newgistic_stock_item["sku"])
@@ -27,31 +30,36 @@ module Workers
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
 
-        if stock_item
-          if (stock_item.count_on_hold != ng_pending_quantity || stock_item.count_on_hand != ng_available_quantity)
-            # check if variant is used in not synced orders
-            unsynced_on_hold = 0
+        if stock_item && different_inventory_levels?(stock_item, ng_pending_quantity, ng_available_quantity)
+          # check if variant is used in not synced orders
+          unsynced_on_hold = 0
 
-            unsynced_line_items.each do |li|
-              if li.variant_id == variant.id
-                unsynced_on_hold += li.quantity
-              end
+          unsynced_line_items.each do |li|
+            if li.variant_id == variant.id
+              unsynced_on_hold += li.quantity
             end
-
-            puts "Not synced #{variant.sku}"
-            puts "On hold - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}"
-            puts "Avaliable - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}"
-            puts "Variant is used #{unsynced_on_hold} times in unsynced orders"
-
-            stock_item.update_columns(
-              count_on_hold: (ng_pending_quantity + unsynced_on_hold),
-              count_on_hand: (ng_available_quantity - unsynced_on_hold)
-            )
-
-            variant.touch
           end
+
+          log << "Not synced #{variant.sku}\n"
+          log << "On hold - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}\n"
+          log << "Avaliable - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}\n"
+          log << "Variant is used #{unsynced_on_hold} times in unsynced orders\n"
+
+          stock_item.update_columns(
+            count_on_hold: (ng_pending_quantity + unsynced_on_hold),
+            count_on_hand: (ng_available_quantity - unsynced_on_hold)
+          )
+
+          variant.touch
         end
       end
+
+      log.close
+    end
+
+    def different_inventory_levels?(stock_item, ng_pending_quantity, ng_available_quantity)
+      stock_item.count_on_hold != ng_pending_quantity ||
+      stock_item.count_on_hand != ng_available_quantity
     end
   end
 end
