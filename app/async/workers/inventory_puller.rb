@@ -17,16 +17,19 @@ module Workers
     def update_inventory(newgistics_stock_items)
       # preload line_items of unsynced orders
       unsynced_line_items = Spree::Order.not_in_newgistics.collect { |os| os.line_items }.flatten
-      log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_inventory_import.log", 'a')
 
+      log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_inventory_import.log", 'a')
       log << "\n\nStarting inventory sync process: #{Time.now}\n\n"
 
+      skus = newgistics_stock_items.map { |si| si["sku"] }
+      variants = Spree::Variant.where(sku: skus).includes(:stock_items)
+
       newgistics_stock_items.each do |newgistic_stock_item|
-        variant = Spree::Variant.where(is_master: false).find_by(sku: newgistic_stock_item["sku"])
+        variant = variants.find { |v| v.sku == newgistic_stock_item["sku"] }#Spree::Variant.where(is_master: false).find_by(sku: newgistic_stock_item["sku"])
         next unless variant
         ## Since newgistics is the only stock location, set 1 as stock_location id.
         ## TODO: add support for multiple stock locations.
-        stock_item = variant.stock_items.find_by(stock_location_id: 1)
+        stock_item = variant.stock_items.find { |si| si.stock_location_id == 1 }
         ng_pending_quantity = newgistic_stock_item['pendingQuantity'].to_i
         ng_available_quantity = newgistic_stock_item['availableQuantity'].to_i
 
