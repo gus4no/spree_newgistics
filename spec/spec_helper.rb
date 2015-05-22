@@ -17,10 +17,19 @@ Dir.glob(File.join(File.dirname(__FILE__), '../../app/async/*.rb')) do |c|
   Rails.configuration.cache_classes ? require(c) : load(c)
 end
 
+require 'sidekiq/testing'
+Sidekiq::Testing.fake! 
+Sidekiq::Testing.inline!
+
 # Configure Rails Environment
 ENV['RAILS_ENV'] = 'test'
 
-require File.expand_path('../dummy/config/environment.rb',  __FILE__)
+dummy_env = File.expand_path('../dummy/config/environment.rb',  __FILE__)
+if File.exists? dummy_env
+  require dummy_env
+else
+  raise RuntimeError.new "spec/dummy is missing, create it with bundle exec rake"
+end
 
 require 'rspec/rails'
 require 'database_cleaner'
