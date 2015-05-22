@@ -23,7 +23,54 @@ describe Workers::InventoryPuller do
         ]
 
         expect{subject.update_inventory(response)}.to change{variant.in_stock?}.from(false).to(true)
+      end
+    end
 
+    context "level sync process" do
+
+      let(:variant) { create :variant, sku: '1234' }
+      let(:random) { Random.new }
+
+      it "should change count_on_hold on data from NG" do
+        first_stock_item = variant.stock_items.first
+        count_on_hold = first_stock_item.count_on_hold + random.rand(100) + 1
+        response = [
+          {
+            "id"=>"1148187",
+            "sku"=>"1234",
+            "currentQuantity"=>"6",
+            "receivingQuantity"=>"0",
+            "arrivedPutAwayQuantity"=>"0",
+            "kittingQuantity"=>"0",
+            "returnsQuantity"=>"0",
+            "pendingQuantity"=>"#{count_on_hold}",
+            "availableQuantity"=>"#{first_stock_item.count_on_hand}",
+            "backorderedQuantity"=>"0"
+          }
+        ]
+
+        expect{subject.update_inventory(response)}.to change{variant.stock_items.first.count_on_hold}.to(count_on_hold)
+      end
+
+      it "should change count_on_hold on data from NG" do
+        first_stock_item = variant.stock_items.first
+        count_on_hand = first_stock_item.count_on_hand + random.rand(100) + 1
+        response = [
+          {
+            "id"=>"1148187",
+            "sku"=>"1234",
+            "currentQuantity"=>"6",
+            "receivingQuantity"=>"0",
+            "arrivedPutAwayQuantity"=>"0",
+            "kittingQuantity"=>"0",
+            "returnsQuantity"=>"0",
+            "pendingQuantity"=>"#{first_stock_item.count_on_hold}",
+            "availableQuantity"=>"#{count_on_hand}",
+            "backorderedQuantity"=>"0"
+          }
+        ]
+
+        expect{subject.update_inventory(response)}.to change{variant.stock_items.first.count_on_hand}.to(count_on_hand)
       end
     end
   end
