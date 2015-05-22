@@ -27,4 +27,32 @@ describe Workers::InventoryPuller do
       end
     end
   end
+
+  describe "#different_inventory_levels?" do
+
+    let(:stock_item) { Spree::StockItem.new }
+    let(:random) { Random.new }
+
+    it "must return true if levels of count_on_hold are different" do
+      stock_item.instance_eval{ count_on_hold = 10 }
+      stock_item.instance_eval{ count_on_hand = 15 }
+      difference = random.rand(100) + 1
+      count_on_hold = stock_item.count_on_hold + difference
+      expect(subject.different_inventory_levels?(stock_item, count_on_hold, stock_item.count_on_hand)).to be_truthy
+    end
+
+    it "must return true if levels of count_on_hand are different" do
+      stock_item.instance_eval{ count_on_hold = 10 }
+      stock_item.instance_eval{ count_on_hand = 15 }
+      difference = random.rand(100) + 1
+      count_on_hand = stock_item.count_on_hand + difference
+      expect(subject.different_inventory_levels?(stock_item, stock_item.count_on_hold, count_on_hand)).to be_truthy
+    end
+
+    it "must return false if all levels are equal" do
+      stock_item.instance_eval{ count_on_hold = 10 }
+      stock_item.instance_eval{ count_on_hand = 15 }
+      expect(subject.different_inventory_levels?(stock_item, stock_item.count_on_hold, stock_item.count_on_hand)).to be_falsy
+    end
+  end
 end
