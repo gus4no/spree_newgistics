@@ -19,12 +19,12 @@ Spree::Order.class_eval do
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def add_newgistics_shipment_content(sku, qty)
-    Workers::OrderContentsUpdater.perform_async self.id, sku, qty, add = true
+    Workers::OrderContentsUpdater.perform_async(self.id, sku, qty, add = true) if complete?
   end
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def remove_newgistics_shipment_content(sku, qty)
-    Workers::OrderContentsUpdater.perform_async self.id, sku, qty, add = false
+    Workers::OrderContentsUpdater.perform_async(self.id, sku, qty, add = false) if complete?
   end
 
   ## This method posts the order to newgisitcs as soon as the checkout ends, if using auto capture
