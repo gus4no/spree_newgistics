@@ -18,7 +18,10 @@ Dir.glob(File.join(File.dirname(__FILE__), '../../app/async/*.rb')) do |c|
 end
 
 require 'sidekiq/testing'
-Sidekiq::Testing.fake! 
+require 'sidekiq/testing/inline'
+require 'sidekiq-status'
+require 'sidekiq-status/testing/inline'
+Sidekiq::Testing.fake!
 Sidekiq::Testing.inline!
 
 # Configure Rails Environment
