@@ -20,7 +20,7 @@ module Workers
       end
     end
 
-    def update_shipments shipments
+    def update_shipments(shipments)
       total 100
       step = 100.0 / shipments.size
       shipments.each_with_index do |shipment, index|
@@ -54,7 +54,10 @@ module Workers
             log << "updating order status\n"
             order.cancel! if order.newgistics_status == 'CANCELED' && !order.canceled?
             log << "updating shipment status\n"
-            order.shipments.each{ |shipment| shipment.ship! } if order.newgistics_status == 'SHIPPED' && !order.shipped?
+            if order.newgistics_status == 'SHIPPED' && !order.shipped?
+              order.shipments.each{ |shipment| shipment.ship! }
+              order.send_product_review_email
+            end
             if order.changed?
               order.save!
               log << "SUCCESS: Order: #{ shipment['OrderID'] } sucessfully updated."
