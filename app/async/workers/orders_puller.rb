@@ -52,7 +52,7 @@ module Workers
             order.shipments.update_all(tracking: shipment['Tracking'])
             order.shipments.update_all(newgistics_tracking_url: shipment['TrackingUrl'])
             log << "updating order status\n"
-            order.cancel! if order.newgistics_status == 'CANCELED' && !order.canceled?
+            order.cancel!(:send_email => "true") if order.newgistics_status == 'CANCELED' && !order.canceled?
             log << "updating shipment status\n"
             if order.newgistics_status == 'SHIPPED' && !order.shipped?
               order.shipments.each{ |shipment| shipment.ship! }
