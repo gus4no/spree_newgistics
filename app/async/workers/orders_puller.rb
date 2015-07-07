@@ -23,6 +23,11 @@ module Workers
     def update_shipments(shipments)
       Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
 
+      log_file = "#{Rails.root}/log/#{self.jid}_newgistics_orders_import.log"
+      log = File.open(log_file, 'a')
+
+
+
       shipments = shipments.each_with_object({order_ids: [], states: [], countries: [], shipments: {}}) do |shipment, hash|
         hash[:states] << shipment['State']
         hash[:countries] << shipment['Country']
@@ -36,9 +41,13 @@ module Workers
         hash[state.abbr] = state
       end
 
+      log << "Found %d states" % states.size
+
       countries = Spree::Country.where(iso_name: shipments[:countries]).each_with_object({}) do |country, hash|
         hash[country.iso_name] = country
       end
+
+      log << "Found %d countries" % countries.size
 
       orders.each do |order|
 
@@ -47,7 +56,7 @@ module Workers
         shipment = shipments[:shipments].delete(order.number)
 
         if shipment.nil?
-          puts "could not find newgistics shipment order_id=%d" % order.id
+          log << "Could not find newgistics shipment order_id=%d" % order.id
           next
         end
 
@@ -56,7 +65,7 @@ module Workers
 
         {state: state_id, country: country_id}.each do |key, val|
           if val.nil?
-            puts "could not find association %s order_id=%d" % [key, order.id]
+            log << "Could not find association %s order_id=%d" % [key, order.id]
           end
         end
 
@@ -81,13 +90,26 @@ module Workers
         order.assign_attributes(attributes)
 
         if order.changed?
-          puts "updating order_id=%d changes=%s" % [order.id, order.changed]
+          log << "Updating order_id=%d changes=%s" % [order.id, order.changed]
           order.save!
         end
 
       end
 
+      progress_at(100)
+      import.log = File.new(log_file, 'r')
+      import.save
+
       Spree::Order.set_callback(:update, :after, :update_newgistics_shipment_address)
+    end
+
+    def progress_at(progress)
+      import.update_attribute(:progress, progress)
+      at progress
+    end
+
+    def import
+      @import ||= Spree::Newgistics::Import.find_or_create_by(job_id: self.jid)
     end
 
   end
