@@ -23,16 +23,19 @@ module Workers
     def update_shipments returns
       Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
 
-      order_numbers = returns.map { |r| r['orderID'] }
-      variant_skus = returns.map { |r| r['SKU'] }
+      data = returns.each_with_object({order_numbers: [], variant_skus: [], returns: {}}) do |r, hash|
+        hash[:order_numbers] << r['orderID']
+        hash[:variant_skus] << r['SKU']
+        hash[:returns][r['orderID']] = r
+      end
 
-      orders = Spree::Order.find_by(number: order_numbers)
-      variants = Spree::Variant.find_by(sku: variant_skus)
+      orders = Spree::Order.find_by(number: data[:order_numbers])
+      variants = Spree::Variant.find_by(sku: data[:variant_skus])
 
-      returns.each do |returned_shipment|
-        order = orders.find { |o| o.number == returned_shipment['orderID'] }
+      orders.each do |order|
+        returned_shipment = data[:returns].detele(order.number)
 
-        if order && order.can_update_newgistics?
+        if returned_shipment && order.can_update_newgistics?
 
           items = returned_shipment["Items"].try(:values).try(:flatten)
           if items
