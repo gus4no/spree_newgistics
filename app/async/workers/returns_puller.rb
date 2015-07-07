@@ -23,8 +23,15 @@ module Workers
     def update_shipments returns
       Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
 
+      order_numbers = returns.map { |r| r['orderID'] }
+      variant_skus = returns.map { |r| r['SKU'] }
+
+      orders = Spree::Order.find_by(number: order_numbers)
+      variants = Spree::Variant.find_by(sku: variant_skus)
+
       returns.each do |returned_shipment|
-        order = Spree::Order.find_by(number: returned_shipment['orderID'])
+        order = orders.find { |o| o.number == returned_shipment['orderID'] }
+
         if order && order.can_update_newgistics?
 
           items = returned_shipment["Items"].try(:values).try(:flatten)
@@ -35,7 +42,8 @@ module Workers
 
             items.each do |returned_item|
 
-              variant = Spree::Variant.find_by(sku: returned_item["SKU"])
+              variant = variants.find { |v| v.sku == returned_item["SKU"] }
+
               if variant
                 rma.add_variant(variant.id, returned_item["QtyReturned"].to_i)
                 amount += variant.price * returned_item["QtyReturned"].to_i
