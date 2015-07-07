@@ -24,11 +24,8 @@ module Workers
 
       hazardous_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id
 
-      skus = products.map { |p| p['sku'] }
-      item_category_names = products.map { |p| p["supplier"] }
-
-      spree_variants = Spree::Variant.find_by(sku: skus)
-      spree_categories = Spree::ItemCategory.find_by(name: item_category_names)
+      spree_variants = Spree::Variant.find_by(sku: products['sku'])
+      spree_categories = Spree::ItemCategory.find_by(name: products["supplier"])
 
       products.each_with_index do |product, index|
         begin
