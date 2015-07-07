@@ -55,11 +55,11 @@ module Workers
             order.update_column(:newgistics_status, returned_shipment["Status"])
             rma.save!
             rma.receive!
-
-            Spree::Order.set_callback(:update, :after, :update_newgistics_shipment_address)
           end
         end
       end
+
+      Spree::Order.set_callback(:update, :after, :update_newgistics_shipment_address)
     end
 
   end
