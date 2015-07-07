@@ -26,8 +26,6 @@ module Workers
       log_file = "#{Rails.root}/log/#{self.jid}_newgistics_orders_import.log"
       log = File.open(log_file, 'a')
 
-
-
       shipments = shipments.each_with_object({order_ids: [], states: [], countries: [], shipments: {}}) do |shipment, hash|
         hash[:states] << shipment['State']
         hash[:countries] << shipment['Country']
@@ -41,13 +39,13 @@ module Workers
         hash[state.abbr] = state
       end
 
-      log << "Found %d states" % states.size
+      log << "Found %d states \n" % states.size
 
       countries = Spree::Country.where(iso_name: shipments[:countries]).each_with_object({}) do |country, hash|
         hash[country.iso_name] = country
       end
 
-      log << "Found %d countries" % countries.size
+      log << "Found %d countries \n" % countries.size
 
       orders.each do |order|
 
@@ -56,7 +54,7 @@ module Workers
         shipment = shipments[:shipments].delete(order.number)
 
         if shipment.nil?
-          log << "Could not find newgistics shipment order_id=%d" % order.id
+          log << "Could not find newgistics shipment order_id=%d \n" % order.id
           next
         end
 
@@ -65,7 +63,7 @@ module Workers
 
         {state: state_id, country: country_id}.each do |key, val|
           if val.nil?
-            log << "Could not find association %s order_id=%d" % [key, order.id]
+            log << "Could not find association %s order_id=%d \n" % [key, order.id]
           end
         end
 
@@ -90,7 +88,7 @@ module Workers
         order.assign_attributes(attributes)
 
         if order.changed?
-          log << "Updating order_id=%d changes=%s" % [order.id, order.changed]
+          log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
           order.save!
         end
 
