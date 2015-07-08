@@ -94,6 +94,8 @@ module Workers
 
       end
 
+      log.close
+
       progress_at(100)
       import.log = File.new(log_file, 'r')
       import.save
