@@ -22,6 +22,10 @@ module Workers
       step = 100.0 / products.size
       disable_callbacks
 
+      log_file = "#{Rails.root}/log/#{self.jid}_newgistics_import.log"
+
+      log = File.open(log_file, 'a')
+
       hazardous_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id
 
       data = products.each_with_object({skus: [], categories: []}) do |p, hash|
@@ -34,7 +38,6 @@ module Workers
 
       products.each_with_index do |product, index|
         begin
-          log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
           spree_variant = spree_variants.find { |sv| sv == product['sku'] }
 
           item_category_id = nil
@@ -127,13 +130,12 @@ module Workers
           end
         rescue StandardError => e
           log << "ERROR: sku: #{product['sku']} failed due to: #{e.message}\n"
-        ensure
-          log.close
         end
         progress_at(step * (index + 1)) if index % 5 == 0
       end
+      log.close
       progress_at(100)
-      import.log = File.new("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'r')
+      import.log = File.new(log_file, 'r')
       import.save
       enable_callbacks
     end
