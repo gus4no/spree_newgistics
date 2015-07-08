@@ -24,9 +24,9 @@ module Workers
       Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
 
       data = returns.each_with_object({order_numbers: [], variant_skus: [], returns: {}}) do |r, hash|
-        hash[:order_numbers] << r['orderID']
+        hash[:order_numbers] << r['OrderID']
         hash[:variant_skus] << r['SKU']
-        hash[:returns][r['orderID']] = r
+        hash[:returns][r['OrderID']] = r
       end
 
       orders = Spree::Order.find_by(number: data[:order_numbers])
