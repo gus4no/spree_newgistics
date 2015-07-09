@@ -7,7 +7,7 @@ module Workers
     def perform
       params = {
           startReceivedTimeStamp: 1.week.ago.strftime('%Y-%m-%d'),
-          EndReceivedTimeStamp: Date.tomorrow.strftime('%Y-%m-%d')
+          endReceivedTimeStamp: Date.tomorrow.strftime('%Y-%m-%d')
       }
 
       response = Spree::Newgistics::HTTPManager.get('shipments.aspx', params)
