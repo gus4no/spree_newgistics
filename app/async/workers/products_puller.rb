@@ -21,12 +21,37 @@ module Workers
       total 100
       step = 100.0 / products.size
       disable_callbacks
+
+      log_file = "#{Rails.root}/log/#{self.jid}_newgistics_import.log"
+
+      log = File.open(log_file, 'a')
+
+      hazardous_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id
+
+      data = products.each_with_object({skus: [], categories: []}) do |p, hash|
+        hash[:skus] << p['sku']
+        hash[:categories] << p["supplier"]
+      end
+
+      spree_variants = Spree::Variant.find_by(sku: data[:skus])
+      spree_categories = Spree::ItemCategory.find_by(name: data[:categories])
+
       products.each_with_index do |product, index|
         begin
-          log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
-          spree_variant = Spree::Variant.find_by(sku: product['sku'])
-          item_category_id = Spree::ItemCategory.find_or_create_by(name: product["supplier"]).id if product['supplier'].present?
-          shipping_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
+          spree_variant = spree_variants.find { |sv| sv == product['sku'] }
+
+          item_category_id = nil
+          if product['supplier'].present?
+            found_category = spree_categories.find { |cat| cat.name == product["supplier"] }
+            if found_category
+              item_category_id = found_category.id
+            else
+              item_category_id = Spree::ItemCategory.create(name: product["supplier"]).id
+            end
+          end
+
+          shipping_category_id = hazardous_category_id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
+
           if spree_variant
             log << "updating sku: #{product['sku']}\n"
             spree_variant.update_attributes!({ upc: product['upc'],
@@ -53,7 +78,7 @@ module Workers
               ## build a master variant sku which would be the same color code with 0000
               product_code = product['sku'].match(/^(.*)-/)[1].to_s
               master_variant_sku = "#{product_code}-00"
-              master_variant = Spree::Variant.find_by(sku: master_variant_sku)
+              master_variant = spree_variants.find { |variant| variant.sku == master_variant_sku && variant.is_master }
 
               ## if we already have a master variant it means a product has been created
               ## let's just add a new variant to the product.
@@ -105,13 +130,12 @@ module Workers
           end
         rescue StandardError => e
           log << "ERROR: sku: #{product['sku']} failed due to: #{e.message}\n"
-        ensure
-          log.close
         end
         progress_at(step * (index + 1)) if index % 5 == 0
       end
+      log.close
       progress_at(100)
-      import.log = File.new("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'r')
+      import.log = File.new(log_file, 'r')
       import.save
       enable_callbacks
     end
