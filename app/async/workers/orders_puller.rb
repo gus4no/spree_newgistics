@@ -89,7 +89,15 @@ module Workers
 
         if order.changed?
           log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
+          order_canceled = order.changed.include?("newgistics_status") && order.newgistics_status == "CANCELED"
+          order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
           order.save!
+
+          order.cancel!(:send_email => "true") if order_canceled
+          if order_shipped
+            order.shipments.each{ |shipment| shipment.ship! }
+            order.send_product_review_email
+          end
         end
 
       end
