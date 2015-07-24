@@ -2,7 +2,9 @@ module Workers
   class OrderPoster < AsyncBase
     include Sidekiq::Worker
 
-    sidekiq_options retry: 3
+    sidekiq_options retry: 3,
+                    unique: true,
+                    unique_args: ->(args) { [ args.first ] }
 
     def perform(order_id)
       order = Spree::Order.find(order_id)
