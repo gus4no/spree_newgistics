@@ -12,9 +12,13 @@ module Workers
         document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
         response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
         if update_success?(response, order.number)
+          if order.newgistics_status != ""
+            order.update_column(:newgistics_status, 'UPDATED')
+          else
+            order.update_column(:newgistics_status, 'RECEIVED')
+          end
           log << "Updated status"
           log.close
-          order.update_column(:newgistics_status, state_change.newgistics_status)
         else
           log << "Encountered errors while updating status"
           log << "#{parse_errors(response)}"
