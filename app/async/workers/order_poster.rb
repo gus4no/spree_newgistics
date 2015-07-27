@@ -15,7 +15,6 @@ module Workers
         document = Spree::Newgistics::DocumentBuilder.build_shipment(order.shipments)
         response = Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
         if update_success?(response, order.number)
-          errors = Nokogiri::XML(response.body).css('errors').children
           log << "NG responded with status #{response.status}, processing order\n"
           order.update_attributes({posted_to_newgistics: true, newgistics_status: 'RECEIVED'})
           log.close
