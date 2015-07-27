@@ -115,7 +115,7 @@ describe Spree::Order do
     end
 
     it 'fails posting the order to newgistics' do
-      order.post_to_newgistics
+      expect { order.post_to_newgistics }.to raise_error(RuntimeError)
       expect(order.posted_to_newgistics).to be_falsy
     end
 
