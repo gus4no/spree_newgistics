@@ -103,6 +103,18 @@ describe Spree::Order do
       expect(line_item.reload.quantity).to eq(qty+1)
     end
 
+    it 'starts status sync on order cancelation' do
+      order.stub(:posted_to_newgistics?).and_return true
+      Workers::OrderStatusUpdater.should_receive(:perform_async).at_least(:once)
+      order.cancel!
+    end
+
+    it 'don\'t start status sync on order cancelation if order is not posted to newgistics' do
+      order.stub(:posted_to_newgistics?).and_return false
+      Workers::OrderStatusUpdater.should_not_receive(:perform_async)
+      order.cancel!
+    end
+
   end
 
   context 'failed requests' do
@@ -115,7 +127,7 @@ describe Spree::Order do
     end
 
     it 'fails posting the order to newgistics' do
-      order.post_to_newgistics
+      expect { order.post_to_newgistics }.to raise_error(RuntimeError)
       expect(order.posted_to_newgistics).to be_falsy
     end
 

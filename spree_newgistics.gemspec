@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'sidekiq'
   s.add_dependency 'sidekiq-cron', '~> 0.2.0'
   s.add_dependency 'sidekiq-status'
+  s.add_dependency 'sidekiq-unique-jobs'
 
   s.add_development_dependency 'capybara', '~> 2.1'
   s.add_development_dependency 'coffee-rails'
@@ -32,4 +33,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'selenium-webdriver'
   s.add_development_dependency 'simplecov'
   s.add_development_dependency 'sqlite3'
+  s.add_development_dependency 'mock_redis'
 end
