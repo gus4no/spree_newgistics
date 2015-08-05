@@ -36,8 +36,6 @@ module Workers
       spree_variants = Spree::Variant.where(sku: data[:skus])
       spree_categories = Spree::ItemCategory.where(name: data[:categories])
 
-      spree_variants.each { |v| puts v.sku }
-
       products.each_with_index do |product, index|
         begin
           spree_variant = spree_variants.find { |sv| sv.sku == product['sku'] }
@@ -45,7 +43,7 @@ module Workers
           item_category_id = nil
           if product['supplier'].present?
             found_category = spree_categories.find { |cat| cat.name == product["supplier"] }
-            if found_category
+            if found_category.present?
               item_category_id = found_category.id
             else
               item_category_id = Spree::ItemCategory.create(name: product["supplier"]).id
@@ -55,64 +53,15 @@ module Workers
           shipping_category_id = hazardous_category_id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
 
           if spree_variant
-            update_variant(spree_variant, log, shipping_category_id)
+            update_variant(product, spree_variant, log, shipping_category_id, item_category_id)
           else
-            puts "not found variant"
             color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
 
             ## if sku has color code it means we need to build and group variants together
             if color_code.present?
-
-              ## build a master variant sku which would be the same color code with 0000
-              product_code = product['sku'].match(/^(.*)-/)[1].to_s
-              master_variant_sku = "#{product_code}-00"
-              master_variant = spree_variants.find { |variant| variant.sku == master_variant_sku && variant.is_master }
-
-              ## if we already have a master variant it means a product has been created
-              ## let's just add a new variant to the product.
-              ## else create a new product, let spree callbacks create the master variant
-              ## and change the sku to the one we want.
-              if master_variant
-                log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
-
-                variant = master_variant.product.variants.new(get_attributes_from(product))
-                variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
-                variant.save!
-              else
-                spree_product = Spree::Product.new(get_attributes_from(product))
-                log << "creating  master sku for grouping: #{master_variant_sku}...\n"
-                spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
-
-                log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
-                spree_variant = Spree::Variant.new(get_attributes_from(product))
-                spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
-                spree_variant.save!
-
-                spree_product.variants << spree_variant
-                spree_product.save!
-              end
-
+              attach_to_master(product, spree_variants, item_category_id, log)
             else
-              log << "creating  master sku for grouping: #{product['sku']}-00...\n"
-
-              spree_product = Spree::Product.new(get_attributes_from(product))
-              master = spree_product.master
-
-
-              spree_product.save!
-              master.update_attributes!(variant_attributes_from(product))
-
-              log << "creating color code #{product['sku']} for master sku: #{product['sku']}-00...\n"
-
-              additional_variant = master.dup
-              additional_variant.is_master = false
-              additional_variant.item_category_id = item_category_id
-              additional_variant.save!
-
-              spree_product.variants << additional_variant
-              spree_product.save!
-              master.update_attributes!({ sku: "#{product['sku']}-00" })
-
+              create_with_master(product, item_category_id, log)
             end
             log << "SUCCESS: created sku: #{product['sku']}\n"
           end
@@ -169,7 +118,7 @@ module Workers
     end
 
     def variant_attributes_from(product)
-      item_category_id = product["category"].present? ? Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).id : nil
+      item_category_id = product["category"].present? ? Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).try(:id) : nil
 
       {
           posted_to_newgistics: true,
@@ -199,7 +148,7 @@ module Workers
       }
     end
 
-    def update_variant(spree_variant, log, shipping_category_id)
+    def update_variant(product, spree_variant, log, shipping_category_id, item_category_id)
       log << "updating sku: #{product['sku']}\n"
       spree_variant.update_attributes!({ upc: product['upc'],
                                          cost_price: product['value'].to_f,
@@ -215,6 +164,59 @@ module Workers
                                         })
       spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
       spree_variant.product.save!
+    end
+
+    def attach_to_master(product, spree_variants, item_category_id, log)
+      ## build a master variant sku which would be the same color code with 0000
+      product_code = product['sku'].match(/^(.*)-/)[1].to_s
+      master_variant_sku = "#{product_code}-00"
+      master_variant = spree_variants.find { |variant| variant.sku == master_variant_sku && variant.is_master }
+
+      ## if we already have a master variant it means a product has been created
+      ## let's just add a new variant to the product.
+      ## else create a new product, let spree callbacks create the master variant
+      ## and change the sku to the one we want.
+      if master_variant
+        log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
+
+        variant = master_variant.product.variants.new(get_attributes_from(product))
+        variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
+        variant.save!
+      else
+        spree_product = Spree::Product.new(get_attributes_from(product))
+        log << "creating  master sku for grouping: #{master_variant_sku}...\n"
+        spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
+
+        log << "1# creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
+        spree_variant = Spree::Variant.new(get_attributes_from(product))
+        spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
+        spree_variant.save!
+
+        spree_product.variants << spree_variant
+        spree_product.save!
+      end
+    end
+
+    def create_with_master(product, item_category_id, log)
+      log << "creating  master sku for grouping: #{product['sku']}-00...\n"
+
+      spree_product = Spree::Product.new(get_attributes_from(product))
+      master = spree_product.master
+
+
+      spree_product.save!
+      master.update_attributes!(variant_attributes_from(product))
+
+      log << "2# creating color code #{product['sku']} for master sku: #{product['sku']}-00...\n"
+
+      additional_variant = master.dup
+      additional_variant.is_master = false
+      additional_variant.item_category_id = item_category_id
+      additional_variant.save!
+
+      spree_product.variants << additional_variant
+      spree_product.save!
+      master.update_attributes!({ sku: "#{product['sku']}-00" })
     end
   end
 end
