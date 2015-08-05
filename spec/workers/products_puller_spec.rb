@@ -32,4 +32,62 @@ describe Workers::ProductsPuller do
       expect(result[:depth]).to be(product['depth'].to_f)
     end
   end
+
+  describe "#variant_attributes_from" do
+    context "with category present" do
+      let(:product) do {
+        'category' => 'cool things',
+        'upc' => '123',
+        'supplierCode' => 'code',
+        'supplier' => 'abc',
+        'isActive' => 'true'
+      }
+      end
+
+      let(:fake_category) {Struct.new(:id)}
+
+      it "should return valid hash" do
+        category_id = 1
+        stub_const("Spree::ItemCategory", fake_category)
+
+        Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+        result = subject.variant_attributes_from(product)
+
+        expect(result[:item_category_id]).to be(category_id)
+        expect(result[:upc]).to be(product['upc'])
+        expect(result[:vendor_sku]).to be(product['supplierCode'])
+        expect(result[:vendor]).to be(product['supplier'])
+        expect(result[:posted_to_newgistics]).to be_truthy
+        expect(result[:newgistics_active]).to be_truthy
+      end
+    end
+
+    context "with blank category" do
+      let(:product) do {
+        'upc' => '123',
+        'supplierCode' => 'code',
+        'supplier' => 'abc',
+        'isActive' => 'true'
+      }
+      end
+
+      it "should return valid hash" do
+        result = subject.variant_attributes_from(product)
+
+        expect(result[:item_category_id]).to be(nil)
+        expect(result[:upc]).to be(product['upc'])
+        expect(result[:vendor_sku]).to be(product['supplierCode'])
+        expect(result[:vendor]).to be(product['supplier'])
+        expect(result[:posted_to_newgistics]).to be_truthy
+        expect(result[:newgistics_active]).to be_truthy
+      end
+
+      it "newgistics_active should depend on data" do
+        product['isActive'] = false
+        result = subject.variant_attributes_from(product)
+
+        expect(result[:newgistics_active]).to be_falsy
+      end
+    end
+  end
 end
