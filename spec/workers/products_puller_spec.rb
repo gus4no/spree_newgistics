@@ -2,6 +2,14 @@ require 'spec_helper'
 
 describe Workers::ProductsPuller do
   describe "#save_products" do
+
+    before(:each) do
+      Spree::Variant.any_instance.stub(:ensure_color_code)
+      Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+    end
+
+    let(:fake_category) {Struct.new(:id)}
+
     context "with existing variant" do
       let(:response) do [{
         'sku' => 'AB124',
@@ -17,9 +25,8 @@ describe Workers::ProductsPuller do
       }] end
 
       let(:variant) { create :variant, sku: 'AB124' }
-      let(:fake_category) {Struct.new(:id)}
 
-      it "sould update existing variant" do
+      it "should update existing variant" do
         category_id = 1
         stub_const("Spree::ItemCategory", fake_category)
         Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
@@ -28,6 +35,62 @@ describe Workers::ProductsPuller do
         variant # to load variant in database
 
         expect(subject).to receive(:update_variant)
+        subject.save_products(response)
+      end
+    end
+
+    context "not exisitng variant with color code" do
+      let(:response) do [{
+        'sku' => 'AB468-123',
+        'description' => 'test - sku',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      }] end
+
+      let(:variant) { create :variant, sku: 'AB468' }
+
+      it "should attach new variant to master" do
+        category_id = 1
+        stub_const("Spree::ItemCategory", fake_category)
+        Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+        Spree::ItemCategory.stub(:where).and_return([])
+        variant.stub(:ensure_color_code).and_return(true)
+
+        variant.is_master = true
+        variant.save
+
+        expect(subject).to receive(:attach_to_master)
+        subject.save_products(response)
+      end
+    end
+
+    context "not exisitng variant without color code" do
+      let(:response) do [{
+        'sku' => 'AB468',
+        'description' => 'test - sku',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      }] end
+
+      it "should attach new variant to master" do
+        category_id = 1
+        stub_const("Spree::ItemCategory", fake_category)
+        Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+        Spree::ItemCategory.stub(:where).and_return([])
+
+        expect(subject).to receive(:create_with_master)
         subject.save_products(response)
       end
     end
