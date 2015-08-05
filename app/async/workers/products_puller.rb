@@ -33,8 +33,8 @@ module Workers
         hash[:categories] << p["supplier"]
       end
 
-      spree_variants = Spree::Variant.find_by(sku: data[:skus])
-      spree_categories = Spree::ItemCategory.find_by(name: data[:categories])
+      spree_variants = Spree::Variant.where(sku: data[:skus])
+      spree_categories = Spree::ItemCategory.where(name: data[:categories])
 
       products.each_with_index do |product, index|
         begin
