@@ -26,7 +26,7 @@ module Workers
 
       log = File.open(log_file, 'a')
 
-      hazardous_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id
+      hazardous_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').try(:id)
 
       data = products.each_with_object({skus: [], categories: []}) do |p, hash|
         hash[:skus] << p['sku']
@@ -36,9 +36,11 @@ module Workers
       spree_variants = Spree::Variant.where(sku: data[:skus])
       spree_categories = Spree::ItemCategory.where(name: data[:categories])
 
+      spree_variants.each { |v| puts v.sku }
+
       products.each_with_index do |product, index|
         begin
-          spree_variant = spree_variants.find { |sv| sv == product['sku'] }
+          spree_variant = spree_variants.find { |sv| sv.sku == product['sku'] }
 
           item_category_id = nil
           if product['supplier'].present?
@@ -53,23 +55,9 @@ module Workers
           shipping_category_id = hazardous_category_id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
 
           if spree_variant
-            log << "updating sku: #{product['sku']}\n"
-            spree_variant.update_attributes!({ upc: product['upc'],
-                                               cost_price: product['value'].to_f,
-                                               price: product['retailValue'].to_f,
-                                               height: product['height'].to_f,
-                                               width: product['width'].to_f,
-                                               weight: product['weight'].to_f,
-                                               depth: product['depth'].to_f,
-                                               vendor_sku: product['supplierCode'],
-                                               vendor: product['supplier'],
-                                               newgistics_active: product['isActive'] == 'true',
-                                               item_category_id: item_category_id
-                                             })
-            spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
-            spree_variant.product.save!
+            update_variant(spree_variant, log, shipping_category_id)
           else
-
+            puts "not found variant"
             color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
 
             ## if sku has color code it means we need to build and group variants together
@@ -209,6 +197,24 @@ module Workers
           available_on: product['isActive'] == 'true' ? Time.now : nil,
           shipping_category_id: 1
       }
+    end
+
+    def update_variant(spree_variant, log, shipping_category_id)
+      log << "updating sku: #{product['sku']}\n"
+      spree_variant.update_attributes!({ upc: product['upc'],
+                                         cost_price: product['value'].to_f,
+                                         price: product['retailValue'].to_f,
+                                         height: product['height'].to_f,
+                                         width: product['width'].to_f,
+                                         weight: product['weight'].to_f,
+                                         depth: product['depth'].to_f,
+                                         vendor_sku: product['supplierCode'],
+                                         vendor: product['supplier'],
+                                         newgistics_active: product['isActive'] == 'true',
+                                         item_category_id: item_category_id
+                                        })
+      spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
+      spree_variant.product.save!
     end
   end
 end

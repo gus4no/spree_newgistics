@@ -2,6 +2,35 @@ require 'spec_helper'
 
 describe Workers::ProductsPuller do
   describe "#save_products" do
+    context "with existing variant" do
+      let(:response) do [{
+        'sku' => 'AB124',
+        'description' => 'test - sku',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      }] end
+
+      let(:variant) { create :variant, sku: 'AB124' }
+      let(:fake_category) {Struct.new(:id)}
+
+      it "sould update existing variant" do
+        category_id = 1
+        stub_const("Spree::ItemCategory", fake_category)
+        Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+        Spree::ItemCategory.stub(:where).and_return([])
+
+        variant # to load variant in database
+
+        expect(subject).to receive(:update_variant)
+        subject.save_products(response)
+      end
+    end
   end
 
   describe "#get_attributes_from" do
