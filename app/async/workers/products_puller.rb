@@ -33,12 +33,11 @@ module Workers
         hash[:categories] << p["supplier"]
       end
 
-      spree_variants = Spree::Variant.where(sku: data[:skus])
       spree_categories = Spree::ItemCategory.where(name: data[:categories])
 
       products.each_with_index do |product, index|
         begin
-          spree_variant = spree_variants.find { |sv| sv.sku == product['sku'] }
+          spree_variant = Spree::Variant.find_by_sku(product['sku'])
 
           item_category_id = nil
           if product['supplier'].present?
@@ -57,11 +56,20 @@ module Workers
           else
             color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
 
+
             ## if sku has color code it means we need to build and group variants together
             if color_code.present?
-              attach_to_master(product, spree_variants, item_category_id, log)
+              attach_to_master(product, item_category_id, log)
             else
-              create_with_master(product, item_category_id, log)
+              # Check if a master variant was created in a previous run
+              master_variant_sku = "#{product['sku']}-00"
+              master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
+              
+              if master_variant
+                attach_to_master(product, item_category_id, log)
+              else
+                create_with_master(product, item_category_id, log)
+              end
             end
             log << "SUCCESS: created sku: #{product['sku']}\n"
           end
@@ -166,11 +174,11 @@ module Workers
       spree_variant.product.save!
     end
 
-    def attach_to_master(product, spree_variants, item_category_id, log)
+    def attach_to_master(product, item_category_id, log)
       ## build a master variant sku which would be the same color code with 0000
       product_code = product['sku'].match(/^(.*)-/)[1].to_s
       master_variant_sku = "#{product_code}-00"
-      master_variant = spree_variants.find { |variant| variant.sku == master_variant_sku && variant.is_master }
+      master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
 
       ## if we already have a master variant it means a product has been created
       ## let's just add a new variant to the product.

@@ -1,6 +1,11 @@
 require 'spec_helper'
 
 describe Workers::InventoryPuller do
+  before(:each) do
+    Spree::Variant.any_instance.stub(:ensure_color_code)
+    Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+  end
+
   describe "#update_inventory" do
     context "when variant's stock items change from 0 to greater than 0" do
 
