@@ -40,7 +40,7 @@ describe Workers::ProductsPuller do
     end
 
     context "with existing master variant" do
-      let(:master_variant) { create :variant, sku: 'CYN6000-00' }
+      let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
 
       let(:response) do [{
         'sku' => 'CYN6000',
