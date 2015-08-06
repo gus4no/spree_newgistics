@@ -2,6 +2,11 @@ require 'spec_helper'
 
 describe Spree::Order do
 
+  before(:each) do
+    Spree::Variant.any_instance.stub(:ensure_color_code)
+    Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+  end
+
   success_adapter = Faraday.new do |builder|
     builder.adapter :test do |stub|
       post_shipment = File.read(File.expand_path('spec/faraday/post_shipment.txt'))
