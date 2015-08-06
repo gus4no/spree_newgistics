@@ -118,7 +118,7 @@ module Workers
     end
 
     def variant_attributes_from(product)
-      item_category_id = product["category"].present? ? Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).try(:id) : nil
+      item_category_id = product["category"].present? ? Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).id : nil
 
       {
           posted_to_newgistics: true,
