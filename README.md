@@ -1,6 +1,8 @@
 SpreeNewgistics
 ===============
 
+[![Build status](https://badge.buildkite.com/b08d3b31fd01cdcadd62297e2cc8a8fdd261b51fc53e03f221.svg)](https://buildkite.com/foxcommerce/spree-newgistics)
+
 Introduction goes here.
 
 Installation
