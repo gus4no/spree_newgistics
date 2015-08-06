@@ -193,11 +193,9 @@ module Workers
         log << "1# creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
         spree_variant = Spree::Variant.new(get_attributes_from(product))
         spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
-        log << spree_variant.inspect + "\n"
         spree_variant.save!
 
         spree_product.variants << spree_variant
-        log << spree_product.inspect + "\n"
         spree_product.save!
       end
     end
