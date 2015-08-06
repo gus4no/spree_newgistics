@@ -1,13 +1,12 @@
 require 'spec_helper'
 
 describe Workers::ProductsPuller do
+  before(:each) do
+    Spree::Variant.any_instance.stub(:ensure_color_code)
+    Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+  end
+
   describe "#save_products" do
-
-    before(:each) do
-      Spree::Variant.any_instance.stub(:ensure_color_code)
-      Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
-    end
-
     let(:fake_category) {Struct.new(:id)}
 
     context "with existing variant" do
@@ -180,6 +179,39 @@ describe Workers::ProductsPuller do
 
         expect(result[:newgistics_active]).to be_falsy
       end
+    end
+  end
+
+  describe "#update_variant" do
+    let(:product) do {
+      'sku' => 'PH9000',
+      'description' => 'test - sku',
+      'upc' => '123',
+      'value' => '12.99',
+      'retailValue' => '10.99',
+      'height' => '1',
+      'width' => '2',
+      'weight' => '3',
+      'depth' => '4',
+      'isActive' => 'true'
+    } end
+
+    let(:variant) { create :variant }
+
+    it "should not fail if variants product is nil" do
+      variant.stub(:ensure_color_code).and_return(true)
+      variant.stub(:upc)
+      variant.stub(:upc=)
+      variant.stub(:vendor)
+      variant.stub(:vendor=)
+      variant.stub(:vendor_sku)
+      variant.stub(:vendor_sku=)
+      variant.stub(:item_category_id)
+      variant.stub(:item_category_id=)
+      variant.stub(:newgistics_active)
+      variant.stub(:newgistics_active=)
+
+      expect { subject.update_variant(product, variant, [], nil, nil) }.not_to raise_error
     end
   end
 end
