@@ -75,6 +75,7 @@ module Workers
           end
         rescue StandardError => e
           log << "ERROR: sku: #{product['sku']} failed due to: #{e.message}\n"
+          log << e.backtrace.join("\n")
         end
         progress_at(step * (index + 1)) if index % 5 == 0
       end
@@ -170,8 +171,10 @@ module Workers
                                          newgistics_active: product['isActive'] == 'true',
                                          item_category_id: item_category_id
                                         })
-      spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
-      spree_variant.product.save!
+      if spree_variant.product.present?
+        spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
+        spree_variant.product.save!
+      end
     end
 
     def attach_to_master(product, item_category_id, log)
@@ -198,11 +201,9 @@ module Workers
         log << "1# creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
         spree_variant = Spree::Variant.new(get_attributes_from(product))
         spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
-        log << spree_variant.to_s + "\n"
         spree_variant.save!
 
         spree_product.variants << spree_variant
-        log << spree_product.to_s + "\n"
         spree_product.save!
       end
     end
