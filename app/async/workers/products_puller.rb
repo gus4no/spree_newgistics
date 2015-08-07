@@ -64,7 +64,7 @@ module Workers
               # Check if a master variant was created in a previous run
               master_variant_sku = "#{product['sku']}-00"
               master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
-              
+
               if master_variant
                 attach_to_master(product, item_category_id, log)
               else
@@ -179,7 +179,7 @@ module Workers
 
     def attach_to_master(product, item_category_id, log)
       ## build a master variant sku which would be the same color code with 0000
-      product_code = product['sku'].match(/^(.*)-/)[1].to_s
+      product_code = product_code(product['sku'])
       master_variant_sku = "#{product_code}-00"
       master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
 
@@ -228,6 +228,14 @@ module Workers
       spree_product.variants << additional_variant
       spree_product.save!
       master.update_attributes!({ sku: "#{product['sku']}-00" })
+    end
+
+    def product_code(product)
+      if product['sku'].match(/^(.*)-/)
+        product['sku'].match(/^(.*)-/)[1].to_s
+      else
+        product['sku']
+      end
     end
   end
 end
