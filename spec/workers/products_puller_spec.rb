@@ -135,8 +135,8 @@ describe Workers::ProductsPuller do
 
     context "not exisitng variant without color code" do
       let(:response) do [{
-        'sku' => 'AB468',
-        'description' => 'test - sku',
+        'sku' => 'REN5',
+        'description' => 'new SKU without color code',
         'upc' => '123',
         'value' => '12.99',
         'retailValue' => '10.99',
@@ -148,12 +148,12 @@ describe Workers::ProductsPuller do
       }] end
 
       it "should attach new variant to master" do
-        category_id = 1
-        stub_const("Spree::ItemCategory", fake_category)
-        Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
-        Spree::ItemCategory.stub(:where).and_return([])
+        # category_id = 1
+        # stub_const("Spree::ItemCategory", fake_category)
+        # Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+        # Spree::ItemCategory.stub(:where).and_return([])
 
-        expect(subject).to receive(:create_with_master)
+        expect(subject).to receive(:create_product)
         subject.save_products(response)
       end
     end
