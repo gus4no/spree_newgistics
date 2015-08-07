@@ -308,4 +308,22 @@ describe Workers::ProductsPuller do
       end
     end
   end
+
+  describe "#color_code_present?" do
+    context "product code with color code" do
+      let(:product) do {
+        'sku' => 'RAN1-05'
+      } end
+
+      it { expect( subject.color_code_present?(product)).to be_truthy }
+    end
+
+    context "product code without color code" do
+      let(:product) do {
+        'sku' => 'RAN1'
+      } end
+
+      it { expect( subject.color_code_present?(product)).to be_falsy }
+    end
+  end
 end

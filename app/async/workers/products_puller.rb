@@ -54,11 +54,8 @@ module Workers
           if spree_variant
             update_variant(product, spree_variant, log, shipping_category_id, item_category_id)
           else
-            color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
-
-
             ## if sku has color code it means we need to build and group variants together
-            if color_code.present?
+            if color_code_present?(product)
               attach_to_master(product, item_category_id, log)
             else
               # Check if a master variant was created in a previous run
@@ -199,7 +196,13 @@ module Workers
         spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
 
         log << "1# creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
-        spree_variant = Spree::Variant.new(get_attributes_from(product))
+        spree_variant = nil
+        if color_code_present?(product)
+          spree_variant = Spree::Variant.new(get_attributes_from(product))
+        else
+          spree_variant = spree_product.master.dup
+          spree_variant.master = false
+        end
         spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
         spree_variant.save!
 
@@ -236,6 +239,10 @@ module Workers
       else
         product['sku']
       end
+    end
+
+    def color_code_present?(product)
+      product['sku'].match(/-([^-]*)$/).try(:[],1).to_s.present?
     end
   end
 end
