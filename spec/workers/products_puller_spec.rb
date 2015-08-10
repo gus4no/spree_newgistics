@@ -41,20 +41,33 @@ describe Workers::ProductsPuller do
     context "with existing master variant" do
       let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
 
-      let(:response) do [{
-        'sku' => 'CYN6000-01',
-        'description' => 'SKU with master already in DB',
-        'upc' => '123',
-        'value' => '12.99',
-        'retailValue' => '10.99',
-        'height' => '1',
-        'width' => '2',
-        'weight' => '3',
-        'depth' => '4',
-        'isActive' => 'true'
-      }] end
-
       context "and no matching variant" do
+        let(:response) do [{
+          'sku' => 'CYN6000-01',
+          'description' => 'SKU with master already in DB',
+          'upc' => '123',
+          'value' => '12.99',
+          'retailValue' => '10.99',
+          'height' => '1',
+          'width' => '2',
+          'weight' => '3',
+          'depth' => '4',
+          'isActive' => 'true'
+        }] end
+
+        let(:colorless_response) do [{
+          'sku' => 'CYN6000',
+          'description' => 'SKU with master already in DB',
+          'upc' => '123',
+          'value' => '12.99',
+          'retailValue' => '10.99',
+          'height' => '1',
+          'width' => '2',
+          'weight' => '3',
+          'depth' => '4',
+          'isActive' => 'true'
+        }] end
+
         it "should create this variant and attach it to the master" do
           category_id = 1
           stub_const("Spree::ItemCategory", fake_category)
@@ -66,6 +79,19 @@ describe Workers::ProductsPuller do
           expect(subject).to receive(:attach_to_master)
           expect(subject).not_to receive(:create_with_master)
           subject.save_products(response)
+        end
+
+        it "should create this variant and attach it to the master" do
+          category_id = 1
+          stub_const("Spree::ItemCategory", fake_category)
+          Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+          Spree::ItemCategory.stub(:where).and_return([])
+
+          master_variant
+
+          expect(subject).to receive(:attach_to_master)
+          expect(subject).not_to receive(:create_with_master)
+          subject.save_products(colorless_response)
         end
       end
 
