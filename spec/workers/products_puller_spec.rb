@@ -285,9 +285,7 @@ describe Workers::ProductsPuller do
         'sku' => 'RAN1-05'
       } end
 
-      it "should not raise error" do
-        expect{ subject.product_code(product) }.not_to raise_error
-      end
+      it { expect{ subject.product_code(product) }.not_to raise_error }
 
       it "should return base" do
         expect( subject.product_code(product) ).to eq(product['sku'].split('-')[0])
@@ -299,11 +297,9 @@ describe Workers::ProductsPuller do
         'sku' => 'RAN1'
       } end
 
-      it "should not raise error" do
-        expect { subject.product_code(product) }.not_to raise_error
-      end
+      it { expect { subject.product_code(product) }.not_to raise_error }
 
-      it "should return base sku" do
+      it "should return SKU" do
         expect( subject.product_code(product) ).to eq(product['sku'])
       end
     end

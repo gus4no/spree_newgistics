@@ -97,7 +97,7 @@ module Workers
           end
         rescue StandardError => e
           log << "ERROR: sku: #{product['sku']} failed due to: #{e.message}\n"
-          log << e.backtrace.join("\n") + "\n"
+          log << e.backtrace.join("\n")
         end
         progress_at(step * (index + 1)) if index % 5 == 0
       end
@@ -201,7 +201,7 @@ module Workers
 
     def attach_to_master(product, item_category_id, log)
       ## build a master variant sku which would be the same color code with 0000
-      code = product_code(product['sku'])
+      code = product_code(product)
       master_variant_sku = "#{code}-00"
       master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
 
@@ -264,7 +264,8 @@ module Workers
     end
 
     def color_code_present?(product)
-      product['sku'].match(/-([^-]*)$/).try(:[],1).to_s.present?
+      color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
+      color_code.present?
     end
   end
 end
