@@ -81,7 +81,7 @@ describe Workers::ProductsPuller do
           subject.save_products(response)
         end
 
-        it "should create this variant and attach it to the master" do
+        it "should create this variant and attach it to the master for colorless SKU" do
           category_id = 1
           stub_const("Spree::ItemCategory", fake_category)
           Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
