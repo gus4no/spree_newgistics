@@ -395,6 +395,42 @@ describe Workers::ProductsPuller do
       end
     end
 
+    context "with exisitng master variant and other variant" do
+      let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
+      let(:other_variant) { create :variant, sku: 'CYN6000-01', is_master: false }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-02',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      before(:each) do
+        master_variant.product.variants << other_variant
+        master_variant.save
+      end
+
+      it "should add new variant to exising ones" do
+        master_variant
+        other_variant
+
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to eq(2)
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant.product).to eq(spree_product)
+      end
+    end
+
     context "without master variant" do
       let(:other_variant) { create :variant, sku: 'RAN1-00', is_master: true }
       let(:item_category_id) { 1 }
