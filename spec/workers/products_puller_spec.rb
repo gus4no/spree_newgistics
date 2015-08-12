@@ -350,11 +350,103 @@ describe Workers::ProductsPuller do
   end
 
   describe "#attach_to_master" do
+
+    before(:each) do
+      Spree::Variant.class_eval do
+        attr_accessor :upc, :vendor, :vendor_sku, :item_category_id, :newgistics_active
+      end
+
+      Spree::Product.class_eval do
+        attr_accessor :upc
+      end
+    end
+
     context "with existing master variant" do
       let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-01',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      it "should create new not master variant attached to master" do
+        master_variant
+
+        subject.attach_to_master(product, item_category_id, [])
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant).not_to be_nil
+        expect(new_variant.is_master).to be_falsy
+      end
+
+      it "should create exactly 1 variants" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to be(1)
+      end
     end
 
     context "without master variant" do
+      let(:other_variant) { create :variant, sku: 'RAN1-00', is_master: true }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-01',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      it "should create a product" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        sku_to_find = product['sku'].split("-")[0] + "-00"
+
+        spree_product = Spree::Product.first
+        expect(spree_product).not_to be_nil
+        expect(spree_product).to be_truthy
+      end
+
+      it "should create master variant with valid SKU" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        sku = product['sku'].split("-")[0] + "-00"
+
+        spree_product = Spree::Product.first
+        master = spree_product.master
+        expect(master).not_to be_nil
+        expect(master.is_master).to be_truthy
+        expect(master.sku).to eq(sku)
+      end
+
+      it "should create new not master variant attached to master" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant).not_to be_nil
+        expect(new_variant.is_master).to be_falsy
+      end
+
+      it "should create exactly 1 variants" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to be(1)
+      end
     end
   end
 end
