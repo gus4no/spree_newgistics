@@ -348,4 +348,13 @@ describe Workers::ProductsPuller do
       it { expect( subject.color_code_present?(product)).to be_falsy }
     end
   end
+
+  describe "#attach_to_master" do
+    context "with existing master variant" do
+      let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
+    end
+
+    context "without master variant" do
+    end
+  end
 end
