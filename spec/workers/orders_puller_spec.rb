@@ -5,7 +5,7 @@ describe Workers::OrdersPuller do
   describe "#update_shipments" do
 
     context "when newgistics status differs" do
-      let(:order) { create :order, newgistics_status: 'RECEIVED', state: 'complete' }
+      let(:order) { create :order, newgistics_status: 'ONVHOLD', state: 'complete' }
       let(:response) do [{
         'OrderID' => order.number,
         'FirstName' => 'John',
