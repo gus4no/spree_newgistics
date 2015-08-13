@@ -6,6 +6,43 @@ describe Workers::ProductsPuller do
     Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
   end
 
+  describe "#create_with_master" do
+
+    let(:product) do
+      {
+        'sku' => 'AB124',
+        'description' => 'test - sku',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      }
+    end
+
+    before do
+      Spree::Product.class_eval do
+        attr_accessor :upc
+      end
+
+      Spree::Variant.class_eval do
+        attr_accessor :item_category_id, :newgistics_active, :upc, :vendor, :vendor_sku
+      end
+    end
+
+    it 'creates a product'  do
+      expect { subject.create_with_master(product, nil, "") }.to change(Spree::Product, :count).by 1
+    end
+
+    it 'creates a master variant and an additional one' do
+      expect { subject.create_with_master(product, nil, "") }.to change(Spree::Variant, :count).by 2
+    end
+
+  end
+
   describe "#save_products" do
     let(:fake_category) {Struct.new(:id)}
 
