@@ -47,7 +47,7 @@ module Workers
 
       log << "Found %d countries \n" % countries.size
 
-      csv_file_created = false
+      csv_file = nil
 
       orders.each do |order|
         begin
@@ -104,13 +104,16 @@ module Workers
         rescue StandardError => e
           log << "Order sync failed for order_number: #{order.number} with error: #{e.message}\n"
           log << e.backtrace.join("\n") + "\n"
-          if csv_file_created
-            # put new line in csv
-          else
-            # open csv file and put line there
+
+          # create CSV file if it is not created and write error report there
+          if csv_file.empty?
+            csv_file = create_csv_file(self.jid)
           end
+          csv_file << [order.id, order.number, e.message, e.backtrace.join(',')]
         end
       end
+
+      csv_file.close if csv_file.present?
 
       log.close
 
@@ -128,6 +131,14 @@ module Workers
 
     def import
       @import ||= Spree::Newgistics::Import.find_or_create_by(job_id: self.jid)
+    end
+
+    def create_csv_file(job_id)
+      filename = "#{job_id}_orders_puller.csv"
+      file_path = "#{Rails.root}/tmp/#{filename}"
+      csv = CSV.open(filepath, "wb")
+      csv << ["order_id", "order_number", "message", "stacktrace"]
+      csv
     end
 
   end
