@@ -35,6 +35,29 @@ describe Workers::OrdersPuller do
 
     end
 
+    context "when exception occurs" do
+      let(:order) { create :order, newgistics_status: 'SHIPPED', state: 'delivery' }
+      let(:response) do [{
+        'OrderID' => order.number,
+        'FirstName' => 'John',
+        'LastName' => 'Smith',
+        'Address1' => 'Somewhere in US',
+        'City' => 'Anycity',
+        'State' => 'CA',
+        'PostalCode' => '12345',
+        'Country' => 'UNITED STATES',
+        'Phone' => '9871231233',
+        'ShipmentStatus' => 'CANCELED'
+      }] end
+
+      it "should not throw an exception" do
+        Spree::Order.any_instance.stub(:send_product_review_email)
+
+        expect { subject.update_shipments(response) }.not_to raise_error
+      end
+
+    end
+
   end
 
 end
