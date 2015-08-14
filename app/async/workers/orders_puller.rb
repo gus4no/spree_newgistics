@@ -1,3 +1,5 @@
+require 'csv'
+
 module Workers
   class OrdersPuller < AsyncBase
     include Sidekiq::Worker
@@ -106,7 +108,7 @@ module Workers
           log << e.backtrace.join("\n") + "\n"
 
           # create CSV file if it is not created and write error report there
-          if csv_file.empty?
+          if csv_file.blank?
             csv_file = create_csv_file(self.jid)
           end
           csv_file << [order.id, order.number, e.message, e.backtrace.join(',')]
@@ -135,7 +137,7 @@ module Workers
 
     def create_csv_file(job_id)
       filename = "#{job_id}_orders_puller.csv"
-      file_path = "#{Rails.root}/tmp/#{filename}"
+      filepath = "#{Rails.root}/tmp/#{filename}"
       csv = CSV.open(filepath, "wb")
       csv << ["order_id", "order_number", "message", "stacktrace"]
       csv
