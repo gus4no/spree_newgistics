@@ -182,12 +182,19 @@ describe Workers::OrdersPuller do
       expect(CSV).to receive(:open).with(file, "wb")
       subject.create_csv_file(jid, [])
     end
+
+    it "should trigger mail sending" do
+      filename = "#{jid}_orders_puller.csv"
+      filepath = "#{Rails.root}/tmp/#{filename}"
+      expect(subject).to receive(:send_csv_file).with(jid, filename, filepath)
+      subject.create_csv_file(jid, [])
+    end
   end
 
   describe "#send_csv_file" do
     it "should call mailer to send file" do
       expect(NewgisticsSyncMailer).to receive(:order_puller_report)
-      subject.send_csv_file("file.csv", "/tmp/file.csv")
+      subject.send_csv_file("abc", "file.csv", "/tmp/file.csv")
     end
   end
 

@@ -1,9 +1,10 @@
 class NewgisticsSyncMailer < ActionMailer::Base
   default from: "techreports@wearebeautykind.com"
-  default to: "e.sypachev@foxcommerce.com"
+  default to: "techreports@wearebeautykind.com"
 
-  def order_puller_report(filename, filepath)
+  def order_puller_report(job_id, filename, filepath)
     attachments[filename] = File.read(filepath)
-    mail(subject: 'OrdersPuller job completed with errors')
+    mail(subject: "OrdersPuller job #{job_id} completed with errors",
+         body: "See details in attachment")
   end
 end

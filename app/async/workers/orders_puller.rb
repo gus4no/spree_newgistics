@@ -142,10 +142,11 @@ module Workers
           csv << line
         end
       end
+      send_csv_file(job_id, filename, filepath)
     end
 
-    def send_csv_file(filename, filepath)
-      NewgisticsSyncMailer.order_puller_report(filename, filepath)
+    def send_csv_file(job_id, filename, filepath)
+      NewgisticsSyncMailer.order_puller_report(job_id, filename, filepath)
     end
 
   end
