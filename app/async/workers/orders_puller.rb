@@ -47,6 +47,8 @@ module Workers
 
       log << "Found %d countries \n" % countries.size
 
+      csv_file_created = false
+
       orders.each do |order|
         begin
           # delete from shipment hash to reduce future lookup cost since we have
@@ -102,6 +104,11 @@ module Workers
         rescue StandardError => e
           log << "Order sync failed for order_number: #{order.number} with error: #{e.message}\n"
           log << e.backtrace.join("\n") + "\n"
+          if csv_file_created
+            # put new line in csv
+          else
+            # open csv file and put line there
+          end
         end
       end
 
