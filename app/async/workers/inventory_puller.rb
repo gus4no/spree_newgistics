@@ -1,7 +1,8 @@
+require 'alerts/slack'
+
 module Workers
   class InventoryPuller < AsyncBase
     include Sidekiq::Worker
-    include Alerts
 
     def perform
 
@@ -53,7 +54,7 @@ module Workers
             msg = %Q(Quantity of available items for SKU #{newgistic_stock_item['sku']} becomes negative.
             spree: #{stock_item.count_on_hand},
             NG: #{ng_available_quantity}")
-            unless slack_notify(msg) 
+            unless Alerts::slack_notify(msg) 
               log << "CRITICAL: Can't send slack notification, please check settings\n"
             end
           end
