@@ -107,7 +107,7 @@ module Workers
           log << "Order sync failed for order_number: #{order.number} with error: #{e.message}\n"
           log << e.backtrace.join("\n") + "\n"
 
-          csv_lines << [order.id, order.number, e.message, e.backtrace.join(',')]
+          csv_lines << [order.id, order.number, e.message, e.backtrace.join(' - ')]
         end
       end
 
