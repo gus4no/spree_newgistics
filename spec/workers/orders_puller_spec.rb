@@ -184,4 +184,11 @@ describe Workers::OrdersPuller do
     end
   end
 
+  describe "#send_csv_file" do
+    it "should call mailer to send file" do
+      expect(NewgisticsSyncMailer).to receive(:order_puller_report)
+      subject.send_csv_file("file.csv", "/tmp/file.csv")
+    end
+  end
+
 end

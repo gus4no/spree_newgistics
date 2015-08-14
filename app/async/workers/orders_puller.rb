@@ -144,5 +144,9 @@ module Workers
       end
     end
 
+    def send_csv_file(filename, filepath)
+      NewgisticsSyncMailer.order_puller_report(filename, filepath)
+    end
+
   end
 end
