@@ -1,6 +1,7 @@
 module Workers
   class InventoryPuller < AsyncBase
     include Sidekiq::Worker
+    include Alerts
 
     def perform
 
@@ -47,6 +48,15 @@ module Workers
           log << "On hold - spree: #{stock_item.count_on_hold} NG: #{ng_pending_quantity}\n"
           log << "Avaliable - spree: #{stock_item.count_on_hand} NG: #{ng_available_quantity}\n"
           log << "Variant is used #{unsynced_on_hold} times in unsynced orders\n"
+
+          if ng_available_quantity < 0 or stock_item.count_on_hand < 0
+            msg = %Q(Quantity of available items for SKU #{newgistic_stock_item['sku']} becomes negative.
+            spree: #{stock_item.count_on_hand},
+            NG: #{ng_available_quantity}")
+            unless slack_notify(msg) 
+              log << "CRITICAL: Can't send slack notification, please check settings\n"
+            end
+          end
 
           stock_item.update_columns(
             count_on_hold: (ng_pending_quantity + unsynced_on_hold),
