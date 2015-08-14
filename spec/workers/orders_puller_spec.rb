@@ -124,8 +124,41 @@ describe Workers::OrdersPuller do
         end
       end
 
+      context "to get the team notified" do
+        let(:order) { create :order, newgistics_status: 'SHIPPED', state: 'delivery' }
+        let(:response) do [{
+          'OrderID' => order.number,
+          'FirstName' => 'John',
+          'LastName' => 'Smith',
+          'Address1' => 'Somewhere in US',
+          'City' => 'Anycity',
+          'State' => 'CA',
+          'PostalCode' => '12345',
+          'Country' => 'UNITED STATES',
+          'Phone' => '9871231233',
+          'ShipmentStatus' => 'CANCELED'
+        }] end
+
+        it "should not throw an exception" do
+          Spree::Order.any_instance.stub(:send_product_review_email)
+
+          expect(subject).to receive(:create_csv_file)
+          subject.update_shipments(response)
+        end
+      end
+
     end
 
+  end
+
+  describe "#create_csv_file" do
+    let(:jid) { 1 }
+
+    it "should open csv file" do
+      file = "#{Rails.root}/tmp/#{jid}_orders_puller.csv"
+      expect(CSV).to receive(:open).with(file, "wb")
+      subject.create_csv_file(jid, [])
+    end
   end
 
 end
