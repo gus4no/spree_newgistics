@@ -149,6 +149,29 @@ describe Workers::OrdersPuller do
 
     end
 
+    context "when no exception occurs" do
+      let(:order) { create :order, newgistics_status: 'UPDATED', state: 'complete' }
+      let(:response) do [{
+        'OrderID' => order.number,
+        'FirstName' => 'John',
+        'LastName' => 'Smith',
+        'Address1' => 'Somewhere in US',
+        'City' => 'Anycity',
+        'State' => 'CA',
+        'PostalCode' => '12345',
+        'Country' => 'UNITED STATES',
+        'Phone' => '9871231233',
+        'ShipmentStatus' => 'SHIPPED'
+      }] end
+
+      it "should not throw an exception" do
+        Spree::Order.any_instance.stub(:send_product_review_email)
+
+        expect(subject).not_to receive(:create_csv_file)
+        subject.update_shipments(response)
+      end
+    end
+
   end
 
   describe "#create_csv_file" do
