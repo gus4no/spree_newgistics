@@ -117,23 +117,6 @@ module Workers
       @import ||= Spree::Newgistics::Import.find_or_create_by(job_id: self.jid)
     end
 
-    def supplier_from(product)
-      Spree::ItemCategory.find_or_create_by(name: product["supplier"])
-      find_supplier(product['supplier']) || create_supplier(product["supplier"])
-    end
-
-    def find_supplier(name)
-      @taxonomy ||= Spree::Taxonomy.find_by(name: 'Brands')
-      @brands ||= @taxonomy.root.children
-      @brands.reload.where("LOWER(spree_taxons.name) = LOWER('#{name.downcase}')").first
-    end
-
-    def create_supplier(name)
-      @taxonomy ||= Spree::Taxonomy.find_by(name: 'Brands')
-      @brands ||= @taxonomy.root.children
-      @brands.reload.create!(name: name.downcase.camelcase, permalink: "brands/#{name.downcase.split(' ').join('-')}", taxonomy_id: @taxonomy.id)
-    end
-
     def disable_callbacks
       Spree::Variant.skip_callback(:save, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:save, :after, :enqueue_product_for_reindex)
