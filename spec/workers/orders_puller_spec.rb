@@ -33,6 +33,22 @@ describe Workers::OrdersPuller do
 
       end
 
+      context "when new status is SHIPPED" do
+
+        let(:order) { create :order_ready_to_ship, newgistics_status: 'ONVHOLD' }
+
+        it "should call ship operations" do
+          response.each { |s| s['ShipmentStatus'] = 'SHIPPED' }
+
+          expect_any_instance_of(Spree::Shipment).to receive(:ship!)
+          subject.update_shipments(response)
+        end
+
+      end
+
+      context "when new status is CANCELED" do
+      end
+
     end
 
     context "when exception occurs" do
