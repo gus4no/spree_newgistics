@@ -37,11 +37,33 @@ describe Workers::OrdersPuller do
 
         let(:order) { create :order_ready_to_ship, newgistics_status: 'ONVHOLD' }
 
+        let(:response) do [{
+          'OrderID' => order.number,
+          'FirstName' => 'John',
+          'LastName' => 'Smith',
+          'Address1' => 'Somewhere in US',
+          'City' => 'Anycity',
+          'State' => 'CA',
+          'PostalCode' => '12345',
+          'Country' => 'UNITED STATES',
+          'Phone' => '9871231233',
+          'ShipmentStatus' => 'SHIPPED'
+        }] end
+
         it "should call ship operations" do
-          response.each { |s| s['ShipmentStatus'] = 'SHIPPED' }
+          order
 
           expect_any_instance_of(Spree::Shipment).to receive(:ship!)
           subject.update_shipments(response)
+        end
+
+        it "should change status of shipments to shipped" do
+          order
+
+          subject.update_shipments(response)
+          order.shipments.each do |s|
+            expect(s.state).to eq('shipped')
+          end
         end
 
       end
