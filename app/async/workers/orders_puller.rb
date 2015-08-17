@@ -86,8 +86,6 @@ module Workers
         attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
 
         order.assign_attributes(attributes)
-        order.shipments.update_all({tracking: shipment['Tracking'],
-                                    newgistics_tracking_url: shipment['TrackingUrl']})
 
         if order.changed?
           log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
@@ -97,7 +95,9 @@ module Workers
 
           order.cancel!(:send_email => "true") if order_canceled
           if order_shipped
-            order.shipments.each{ |shipment| shipment.ship! }
+            order.shipments.update_all({tracking: shipment['Tracking'],
+                                    newgistics_tracking_url: shipment['TrackingUrl']})
+            order.shipments.each { |shipment| shipment.ship! }
             order.send_product_review_email
           end
         end
