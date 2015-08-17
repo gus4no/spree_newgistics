@@ -101,7 +101,7 @@ describe Workers::OrdersPuller do
         it "should call cancel callbacks" do
           order
 
-          expect_any_instance_of(Spree::Order).to receive(:cancel!)
+          expect_any_instance_of(Spree::Order).to receive(:cancel!).with(send_email: "true")
           subject.update_shipments(response)
         end
       end
