@@ -66,6 +66,12 @@ describe Workers::OrdersPuller do
           end
         end
 
+        it "should enqueue product review email" do
+          order
+
+          expect_any_instance_of(Spree::Order).to receive(:send_product_review_email)
+          subject.update_shipments(response)
+        end
       end
 
       context "when new status is CANCELED" do
