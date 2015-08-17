@@ -86,6 +86,8 @@ module Workers
         attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
 
         order.assign_attributes(attributes)
+        order.shipments.update_all({tracking: shipment['Tracking'],
+                                    newgistics_tracking_url: shipment['TrackingUrl']})
 
         if order.changed?
           log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
