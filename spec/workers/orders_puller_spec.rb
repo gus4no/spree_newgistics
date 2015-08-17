@@ -75,6 +75,35 @@ describe Workers::OrdersPuller do
       end
 
       context "when new status is CANCELED" do
+        let(:order) { create :order, newgistics_status: 'ONVHOLD', state: 'complete' }
+        let(:response) do [{
+          'OrderID' => order.number,
+          'FirstName' => 'John',
+          'LastName' => 'Smith',
+          'Address1' => 'Somewhere in US',
+          'City' => 'Anycity',
+          'State' => 'CA',
+          'PostalCode' => '12345',
+          'Country' => 'UNITED STATES',
+          'Phone' => '9871231233',
+          'ShipmentStatus' => 'CANCELED'
+        }] end
+
+        it "should update order newgistics status" do
+          order
+
+          subject.update_shipments(response)
+          order.reload
+
+          expect(order.newgistics_status).to eq('CANCELED')
+        end
+
+        it "should call cancel callbacks" do
+          order
+
+          expect_any_instance_of(Spree::Order).to receive(:cancel!)
+          subject.update_shipments(response)
+        end
       end
 
     end
