@@ -6,7 +6,83 @@ describe Workers::ProductsPuller do
     Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
   end
 
+  describe "#create_with_master" do
+
+    let(:product) do
+      {
+        'sku' => 'AB124',
+        'description' => 'test - sku',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      }
+    end
+
+    before do
+      Spree::Product.class_eval do
+        attr_accessor :upc
+      end
+
+      Spree::Variant.class_eval do
+        attr_accessor :item_category_id, :newgistics_active, :upc, :vendor, :vendor_sku
+      end
+    end
+
+    it 'creates a product'  do
+      expect { subject.create_with_master(product, nil, "") }.to change(Spree::Product, :count).by 1
+    end
+
+    it 'creates a master variant and an additional one' do
+      expect { subject.create_with_master(product, nil, "") }.to change(Spree::Variant, :count).by 2
+    end
+
+  end
+
+  describe '#item_category_id_from' do
+    let(:categories) { [] }
+
+    context 'without a supplier' do
+      it 'returns nil' do
+        expect(subject.item_category_id_from(nil, categories)).to be_nil
+      end
+    end
+
+    context 'with a supplier' do
+
+      let(:supplier)   { Faker::Name.last_name }
+      let(:category)   { double('Spree::ItemCategory', id: 1, name: supplier)  }
+
+      context 'when the category is found' do
+        let(:categories) { [category] }
+
+        it 'returns the category id' do
+          expect(subject.item_category_id_from(supplier, categories)).to eq(category.id)
+        end
+      end
+
+      context 'when the category is not found' do
+        before do
+          stub_const('Spree::ItemCategory', double('Spree::ItemCategory'))
+        end
+
+        it 'creates a new category and returns its id' do
+          expect(Spree::ItemCategory).to receive(:create).with(name: supplier) { category }
+          expect(subject.item_category_id_from(supplier, categories)).to eq(category.id)
+        end
+      end
+    end
+  end
+
   describe "#save_products" do
+    before do
+      subject.stub :item_category_from
+    end
+
     let(:fake_category) {Struct.new(:id)}
 
     context "with existing variant" do
