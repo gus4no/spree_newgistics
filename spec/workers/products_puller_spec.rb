@@ -78,6 +78,58 @@ describe Workers::ProductsPuller do
     end
   end
 
+  describe '#perform' do
+
+    let(:fake_response) { double('Response') }
+
+    before do
+      allow(Spree::Newgistics::HTTPManager).to receive(:get) { fake_response  }
+    end
+
+    context 'when products response is unsuccessful' do
+      before do
+        fake_response.stub status: 422
+      end
+
+      it 'inserts a new record with the failure' do
+        expect{ subject.perform }.to change(Spree::Newgistics::Import, :count).by 1
+      end
+    end
+
+    context 'when products response is successful' do
+      before do
+        fake_response.stub status: 200, body: <<-XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <products>
+            <product id="1001">
+              <sku>PRODUCTSKU0001</sku>
+              <description>This is a test product</description>
+              <upc>8123456789012</upc>
+              <supplier>Test Supplier</supplier>
+              <supplierCode>VENDORSKU001</supplierCode>
+              <category>Furniture</category>
+              <height>44</height>
+              <width>13</width>
+              <depth>10</depth>
+              <weight>15</weight>
+              <value>79.0000</value>
+              <retailValue>99.9900</retailValue>
+              <isActive>true</isActive>
+              <customFields>
+                <CountryOfOrigin>USA</CountryOfOrigin>
+              </customFields>
+            </product>
+          </products>
+        XML
+      end
+
+      it 'saves the products' do
+        expect(subject).to receive(:save_products)
+        subject.perform
+      end
+    end
+  end
+
   describe "#save_products" do
     before do
       subject.stub :item_category_from
