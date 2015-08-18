@@ -1,3 +1,5 @@
+require 'csv'
+
 module Workers
   class OrdersPuller < AsyncBase
     include Sidekiq::Worker
@@ -47,61 +49,73 @@ module Workers
 
       log << "Found %d countries \n" % countries.size
 
+      csv_lines = []
+
       orders.each do |order|
+        begin
+          # delete from shipment hash to reduce future lookup cost since we have
+          # 1:1 shipments : orders
+          shipment = shipments[:shipments].delete(order.number)
 
-        # delete from shipment hash to reduce future lookup cost since we have
-        # 1:1 shipments : orders
-        shipment = shipments[:shipments].delete(order.number)
-
-        if shipment.nil?
-          log << "Could not find newgistics shipment order_id=%d \n" % order.id
-          next
-        end
-
-        state_id = states[shipment['State']].try(:id)
-        country_id = countries[shipment['Country']].try(:id)
-
-        {state: state_id, country: country_id}.each do |key, val|
-          if val.nil?
-            log << "Could not find association %s order_id=%d \n" % [key, order.id]
+          if shipment.nil?
+            log << "Could not find Newgistics shipment for order number %s\n" % order.number
+            next
           end
-        end
 
-        attributes = {
-            newgistics_status: shipment['ShipmentStatus'],
-            ship_address_attributes: {
-              firstname: shipment['FirstName'],
-              lastname: shipment['LastName'],
-              company: shipment['Company'],
-              address1: shipment['Address1'],
-              address2: shipment['Address2'],
-              city: shipment['City'],
-              zipcode: shipment['PostalCode'],
-              phone: shipment['Phone']
-            }
-        }
-
-
-        attributes[:ship_address_attributes].merge!({state_id: state_id}) if state_id
-        attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
-
-        order.assign_attributes(attributes)
-
-        if order.changed?
-          log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
-          order_canceled = order.changed.include?("newgistics_status") && order.newgistics_status == "CANCELED"
-          order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
-          order.save!
-
-          order.cancel!(:send_email => "true") if order_canceled
-          if order_shipped
-            order.shipments.update_all({tracking: shipment['Tracking'],
-                                    newgistics_tracking_url: shipment['TrackingUrl']})
-            order.shipments.each { |shipment| shipment.ship! }
-            order.send_product_review_email
+          state_id = states[shipment['State']].try(:id)
+          if state_id.nil?
+            log << "Could not find the state with abbreviation=%s when processing order %s" % [shipments['State'], order.number]
           end
-        end
 
+          country_id = countries[shipment['Country']].try(:id)
+          if country_id.nil?
+            log << "Could not find the country %s when processing order %s" % [shipments['Country'], order.number]
+          end
+
+          attributes = {
+              newgistics_status: shipment['ShipmentStatus'],
+              ship_address_attributes: {
+                firstname: shipment['FirstName'],
+                lastname: shipment['LastName'],
+                company: shipment['Company'],
+                address1: shipment['Address1'],
+                address2: shipment['Address2'],
+                city: shipment['City'],
+                zipcode: shipment['PostalCode'],
+                phone: shipment['Phone']
+              }
+          }
+
+
+          attributes[:ship_address_attributes].merge!({state_id: state_id}) if state_id
+          attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
+
+          order.assign_attributes(attributes)
+
+          if order.changed?
+            log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
+            order_canceled = order.changed.include?("newgistics_status") && order.newgistics_status == "CANCELED"
+            order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
+            order.save!
+
+            order.cancel!(:send_email => "true") if order_canceled
+            if order_shipped
+              order.shipments.update_all({tracking: shipment['Tracking'],
+                                      newgistics_tracking_url: shipment['TrackingUrl']})
+              order.shipments.each { |shipment| shipment.ship! }
+              order.send_product_review_email
+            end
+          end
+        rescue StandardError => e
+          log << "Order sync failed for order_number: #{order.number} with error: #{e.message}\n"
+          log << e.backtrace.join("\n") + "\n"
+
+          csv_lines << [order.id, order.number, e.message, e.backtrace.join(' - ')]
+        end
+      end
+
+      if csv_lines.length > 0
+        create_csv_file(self.jid, csv_lines)
       end
 
       log.close
@@ -120,6 +134,22 @@ module Workers
 
     def import
       @import ||= Spree::Newgistics::Import.find_or_create_by(job_id: self.jid)
+    end
+
+    def create_csv_file(job_id, lines)
+      filename = "#{job_id}_orders_puller.csv"
+      filepath = "#{Rails.root}/tmp/#{filename}"
+      CSV.open(filepath, "wb") do |csv|
+        csv << ["order_id", "order_number", "message", "stacktrace"]
+        lines.each do |line|
+          csv << line
+        end
+      end
+      send_csv_file(job_id, filename, filepath)
+    end
+
+    def send_csv_file(job_id, filename, filepath)
+      NewgisticsSyncMailer.order_puller_report(job_id, filename, filepath)
     end
 
   end
