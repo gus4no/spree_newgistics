@@ -58,17 +58,18 @@ module Workers
           shipment = shipments[:shipments].delete(order.number)
 
           if shipment.nil?
-            log << "Could not find newgistics shipment order_id=%d \n" % order.id
+            log << "Could not find Newgistics shipment for order number %s\n" % order.number
             next
           end
 
           state_id = states[shipment['State']].try(:id)
-          country_id = countries[shipment['Country']].try(:id)
+          if state_id.nil?
+            log << "Could not find the state with abbreviation=%s when processing order %s" % [shipments['State'], order.number]
+          end
 
-          {state: state_id, country: country_id}.each do |key, val|
-            if val.nil?
-              log << "Could not find association %s order_id=%d \n" % [key, order.id]
-            end
+          country_id = countries[shipment['Country']].try(:id)
+          if country_id.nil?
+            log << "Could not find the country %s when processing order %s" % [shipments['Country'], order.number]
           end
 
           attributes = {
@@ -92,7 +93,7 @@ module Workers
           order.assign_attributes(attributes)
 
           if order.changed?
-            log << "Updating order_id=%d changes=%s \n" % [order.id, order.changed]
+            log << "Updating order_number=%s changes=%s \n" % [order.number, order.changed]
             order_canceled = order.changed.include?("newgistics_status") && order.newgistics_status == "CANCELED"
             order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
             order.save!
