@@ -1,6 +1,6 @@
 class NewgisticsSyncMailer < ActionMailer::Base
-  default from: "techreports@wearebeautykind.com"
-  default to: "techreports@wearebeautykind.com"
+  default from: ENV['NEWGISTICS_NOTIFICATION_FROM_EMAIL'] || "techreports@wearebeautykind.com"
+  default to: ENV['NEWGISTICS_NOTIFICATION_TO_EMAIL'] || "techreports@wearebeautykind.com"
 
   def order_puller_report(job_id, filename, filepath)
     attachments[filename] = File.read(filepath)
