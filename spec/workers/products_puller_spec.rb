@@ -345,7 +345,6 @@ describe Workers::ProductsPuller do
 
       specify do
         expect(log).to receive(:<<).with "ERROR: sku: #{products[0]['sku']} failed due to: #{error}\n"
-        expect(log).to receive(:<<).with(any_args)
 
         subject.save_products(products)
       end
