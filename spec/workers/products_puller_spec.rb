@@ -311,6 +311,45 @@ describe Workers::ProductsPuller do
         subject.save_products(response)
       end
     end
+
+    context 'when an exception is raised' do
+      let(:products) do
+        [{
+          'sku' => 'REN5',
+          'description' => 'new SKU without color code',
+          'upc' => '123',
+          'value' => '12.99',
+          'retailValue' => '10.99',
+          'height' => '1',
+          'width' => '2',
+          'weight' => '3',
+          'depth' => '4',
+          'isActive' => 'true'
+        }]
+      end
+
+      let(:log) do
+        double('Log').as_null_object
+      end
+
+      let(:error) { 'Could be anything really' }
+
+      before do
+        allow(Spree::Variant).to receive(:find_by_sku).and_raise(StandardError, error)
+
+        allow(File).to receive(:open).and_return(log)
+
+        stub_const("Spree::ItemCategory", fake_category)
+        Spree::ItemCategory.stub(:where).and_return([])
+      end
+
+      specify do
+        expect(log).to receive(:<<).with "ERROR: sku: #{products[0]['sku']} failed due to: #{error}\n"
+        expect(log).to receive(:<<).with(any_args)
+
+        subject.save_products(products)
+      end
+    end
   end
 
   describe "#get_attributes_from" do
