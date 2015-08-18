@@ -9,8 +9,8 @@ module Alerts
     
     notifier = Slack::Notifier.new ENV['SLACK_WEBHOOK_URL']
 
-    params = {channel: ENV['SLACK_CHANNEL'],
-                                   username: ENV['SLACK_USERNAME'] }
+    params = { channel: ENV['SLACK_CHANNEL'],
+               username: ENV['SLACK_USERNAME'] }
     params.merge! opts
     params[:username] ||= "Spree newgistics"
                                    
