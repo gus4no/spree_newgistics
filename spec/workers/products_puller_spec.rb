@@ -41,20 +41,33 @@ describe Workers::ProductsPuller do
     context "with existing master variant" do
       let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
 
-      let(:response) do [{
-        'sku' => 'CYN6000',
-        'description' => 'SKU with master already in DB',
-        'upc' => '123',
-        'value' => '12.99',
-        'retailValue' => '10.99',
-        'height' => '1',
-        'width' => '2',
-        'weight' => '3',
-        'depth' => '4',
-        'isActive' => 'true'
-      }] end
-
       context "and no matching variant" do
+        let(:response) do [{
+          'sku' => 'CYN6000-01',
+          'description' => 'SKU with master already in DB',
+          'upc' => '123',
+          'value' => '12.99',
+          'retailValue' => '10.99',
+          'height' => '1',
+          'width' => '2',
+          'weight' => '3',
+          'depth' => '4',
+          'isActive' => 'true'
+        }] end
+
+        let(:colorless_response) do [{
+          'sku' => 'CYN6000',
+          'description' => 'SKU with master already in DB',
+          'upc' => '123',
+          'value' => '12.99',
+          'retailValue' => '10.99',
+          'height' => '1',
+          'width' => '2',
+          'weight' => '3',
+          'depth' => '4',
+          'isActive' => 'true'
+        }] end
+
         it "should create this variant and attach it to the master" do
           category_id = 1
           stub_const("Spree::ItemCategory", fake_category)
@@ -66,6 +79,19 @@ describe Workers::ProductsPuller do
           expect(subject).to receive(:attach_to_master)
           expect(subject).not_to receive(:create_with_master)
           subject.save_products(response)
+        end
+
+        it "should create this variant and attach it to the master for colorless SKU" do
+          category_id = 1
+          stub_const("Spree::ItemCategory", fake_category)
+          Spree::ItemCategory.stub(:find_or_create_by!).and_return(Spree::ItemCategory.new(category_id))
+          Spree::ItemCategory.stub(:where).and_return([])
+
+          master_variant
+
+          expect(subject).to receive(:attach_to_master)
+          expect(subject).not_to receive(:create_with_master)
+          subject.save_products(colorless_response)
         end
       end
 
@@ -135,8 +161,8 @@ describe Workers::ProductsPuller do
 
     context "not exisitng variant without color code" do
       let(:response) do [{
-        'sku' => 'AB468',
-        'description' => 'test - sku',
+        'sku' => 'REN5',
+        'description' => 'new SKU without color code',
         'upc' => '123',
         'value' => '12.99',
         'retailValue' => '10.99',
@@ -276,6 +302,187 @@ describe Workers::ProductsPuller do
       variant.stub(:newgistics_active=)
 
       expect { subject.update_variant(product, variant, [], nil, nil) }.not_to raise_error
+    end
+  end
+
+  describe "#product_code" do
+    context "product code with color code" do
+      let(:product) do {
+        'sku' => 'RAN1-05'
+      } end
+
+      it { expect{ subject.product_code(product) }.not_to raise_error }
+
+      it "should return base" do
+        expect( subject.product_code(product) ).to eq(product['sku'].split('-')[0])
+      end
+    end
+
+    context "product code without color code" do
+      let(:product) do {
+        'sku' => 'RAN1'
+      } end
+
+      it { expect { subject.product_code(product) }.not_to raise_error }
+
+      it "should return SKU" do
+        expect( subject.product_code(product) ).to eq(product['sku'])
+      end
+    end
+  end
+
+  describe "#color_code_present?" do
+    context "product code with color code" do
+      let(:product) do {
+        'sku' => 'RAN1-05'
+      } end
+
+      it { expect( subject.color_code_present?(product)).to be_truthy }
+    end
+
+    context "product code without color code" do
+      let(:product) do {
+        'sku' => 'RAN1'
+      } end
+
+      it { expect( subject.color_code_present?(product)).to be_falsy }
+    end
+  end
+
+  describe "#attach_to_master" do
+
+    before(:each) do
+      Spree::Variant.class_eval do
+        attr_accessor :upc, :vendor, :vendor_sku, :item_category_id, :newgistics_active
+      end
+
+      Spree::Product.class_eval do
+        attr_accessor :upc
+      end
+    end
+
+    context "with existing master variant" do
+      let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-01',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      it "should create new not master variant attached to master" do
+        master_variant
+
+        subject.attach_to_master(product, item_category_id, [])
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant).not_to be_nil
+        expect(new_variant.is_master).to be_falsy
+      end
+
+      it "should create exactly 1 variants" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to be(1)
+      end
+    end
+
+    context "with exisitng master variant and other variant" do
+      let(:master_variant) { create :variant, sku: 'CYN6000-00', is_master: true }
+      let(:other_variant) { create :variant, sku: 'CYN6000-01', is_master: false }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-02',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      before(:each) do
+        master_variant.product.variants << other_variant
+        master_variant.save
+      end
+
+      it "should add new variant to exising ones" do
+        master_variant
+        other_variant
+
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to eq(2)
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant.product).to eq(spree_product)
+      end
+    end
+
+    context "without master variant" do
+      let(:other_variant) { create :variant, sku: 'RAN1-00', is_master: true }
+      let(:item_category_id) { 1 }
+      let(:product) do {
+        'sku' => 'CYN6000-01',
+        'description' => 'variant to attach',
+        'upc' => '123',
+        'value' => '12.99',
+        'retailValue' => '10.99',
+        'height' => '1',
+        'width' => '2',
+        'weight' => '3',
+        'depth' => '4',
+        'isActive' => 'true'
+      } end
+
+      it "should create a product" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        sku_to_find = product['sku'].split("-")[0] + "-00"
+
+        spree_product = Spree::Product.first
+        expect(spree_product).not_to be_nil
+        expect(spree_product).to be_truthy
+      end
+
+      it "should create master variant with valid SKU" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        sku = product['sku'].split("-")[0] + "-00"
+
+        spree_product = Spree::Product.first
+        master = spree_product.master
+        expect(master).not_to be_nil
+        expect(master.is_master).to be_truthy
+        expect(master.sku).to eq(sku)
+      end
+
+      it "should create new not master variant attached to master" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        new_variant = Spree::Variant.find_by_sku(product['sku'])
+        expect(new_variant).not_to be_nil
+        expect(new_variant.is_master).to be_falsy
+      end
+
+      it "should create exactly 1 variants" do
+        subject.attach_to_master(product, item_category_id, [])
+
+        spree_product = Spree::Product.first
+        expect(spree_product.variants.length).to be(1)
+      end
     end
   end
 end

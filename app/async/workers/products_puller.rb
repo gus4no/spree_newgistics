@@ -17,6 +17,31 @@ module Workers
       end
     end
 
+    ###
+    # product SKU can have two parts: BASE_SKU and COLOR_CODE
+    # BASE_SKU - COLOR_CODE
+    #
+    # for each product in Newgistics response it takes SKU
+    # firstly SKU is checked if there is a variant in database
+    # if there is a variant with equal SKU
+    #   variant is updated
+    # else
+    #   SKU is checked for a presence of color code
+    #   if color code is present
+    #     database is checked for a presence of master varaint with SKU like BASE_SKU-00
+    #     if master variant is present
+    #       product is attached to master variant
+    #     else
+    #       master variant is created
+    #       and variant is attached to it
+    #   else
+    #     database is checked for a presence of master varaint with SKU like BASE_SKU-00
+    #     if master variant is present
+    #       product is attached to master variant
+    #     else
+    #       master variant is created with BASE_SKU-00
+    #       additional variant is added to master with SKU like BASE_SKU
+    ###
     def save_products(products)
       total 100
       step = 100.0 / products.size
@@ -54,17 +79,14 @@ module Workers
           if spree_variant
             update_variant(product, spree_variant, log, shipping_category_id, item_category_id)
           else
-            color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
-
-
             ## if sku has color code it means we need to build and group variants together
-            if color_code.present?
+            if color_code_present?(product)
               attach_to_master(product, item_category_id, log)
             else
               # Check if a master variant was created in a previous run
               master_variant_sku = "#{product['sku']}-00"
               master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
-              
+
               if master_variant
                 attach_to_master(product, item_category_id, log)
               else
@@ -179,8 +201,8 @@ module Workers
 
     def attach_to_master(product, item_category_id, log)
       ## build a master variant sku which would be the same color code with 0000
-      product_code = product['sku'].match(/^(.*)-/)[1].to_s
-      master_variant_sku = "#{product_code}-00"
+      code = product_code(product)
+      master_variant_sku = "#{code}-00"
       master_variant = Spree::Variant.find { |variant| variant.sku == master_variant_sku && variant.is_master }
 
       ## if we already have a master variant it means a product has been created
@@ -196,11 +218,12 @@ module Workers
       else
         spree_product = Spree::Product.new(get_attributes_from(product))
         log << "creating  master sku for grouping: #{master_variant_sku}...\n"
-        spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
+        spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku, is_master: true }))
 
         log << "1# creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
         spree_variant = Spree::Variant.new(get_attributes_from(product))
-        spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
+        spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id, is_master: false }))
+
         spree_variant.save!
 
         spree_product.variants << spree_variant
@@ -213,7 +236,6 @@ module Workers
 
       spree_product = Spree::Product.new(get_attributes_from(product))
       master = spree_product.master
-
 
       spree_product.save!
       master.update_attributes!(variant_attributes_from(product))
@@ -228,6 +250,19 @@ module Workers
       spree_product.variants << additional_variant
       spree_product.save!
       master.update_attributes!({ sku: "#{product['sku']}-00" })
+    end
+
+    def product_code(product)
+      if product['sku'].match(/^(.*)-/)
+        product['sku'].match(/^(.*)-/)[1].to_s
+      else
+        product['sku']
+      end
+    end
+
+    def color_code_present?(product)
+      color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
+      color_code.present?
     end
   end
 end
