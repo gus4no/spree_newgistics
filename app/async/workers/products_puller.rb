@@ -3,6 +3,12 @@ module Workers
     include Sidekiq::Worker
     include Sidekiq::Status::Worker
 
+    def item_category_id_from(supplier, categories)
+      return unless supplier.present?
+
+      category = categories.find{|cat| cat.name == supplier }
+      category ? category.id : Spree::ItemCategory.create(name: supplier).id
+    end
 
     def perform
       response = Spree::Newgistics::HTTPManager.get('products.aspx')
@@ -64,15 +70,7 @@ module Workers
         begin
           spree_variant = Spree::Variant.find_by_sku(product['sku'])
 
-          item_category_id = nil
-          if product['supplier'].present?
-            found_category = spree_categories.find { |cat| cat.name == product["supplier"] }
-            if found_category.present?
-              item_category_id = found_category.id
-            else
-              item_category_id = Spree::ItemCategory.create(name: product["supplier"]).id
-            end
-          end
+          item_category_id = item_category_from(product['supplier'], spree_categories)
 
           shipping_category_id = hazardous_category_id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
 

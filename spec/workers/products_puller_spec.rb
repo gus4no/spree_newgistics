@@ -43,7 +43,46 @@ describe Workers::ProductsPuller do
 
   end
 
+  describe '#item_category_id_from' do
+    let(:categories) { [] }
+
+    context 'without a supplier' do
+      it 'returns nil' do
+        expect(subject.item_category_id_from(nil, categories)).to be_nil
+      end
+    end
+
+    context 'with a supplier' do
+
+      let(:supplier)   { Faker::Name.last_name }
+      let(:category)   { double('Spree::ItemCategory', id: 1, name: supplier)  }
+
+      context 'when the category is found' do
+        let(:categories) { [category] }
+
+        it 'returns the category id' do
+          expect(subject.item_category_id_from(supplier, categories)).to eq(category.id)
+        end
+      end
+
+      context 'when the category is not found' do
+        before do
+          stub_const('Spree::ItemCategory', double('Spree::ItemCategory'))
+        end
+
+        it 'creates a new category and returns its id' do
+          expect(Spree::ItemCategory).to receive(:create).with(name: supplier) { category }
+          expect(subject.item_category_id_from(supplier, categories)).to eq(category.id)
+        end
+      end
+    end
+  end
+
   describe "#save_products" do
+    before do
+      subject.stub :item_category_from
+    end
+
     let(:fake_category) {Struct.new(:id)}
 
     context "with existing variant" do
