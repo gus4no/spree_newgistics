@@ -95,7 +95,9 @@ module Workers
 
           order.cancel!(:send_email => "true") if order_canceled
           if order_shipped
-            order.shipments.each{ |shipment| shipment.ship! }
+            order.shipments.update_all({tracking: shipment['Tracking'],
+                                    newgistics_tracking_url: shipment['TrackingUrl']})
+            order.shipments.each { |shipment| shipment.ship! }
             order.send_product_review_email
           end
         end
