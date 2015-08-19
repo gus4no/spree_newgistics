@@ -4,6 +4,14 @@ describe Workers::OrdersPuller do
 
   describe "#update_shipments" do
 
+    before(:each) do
+      Spree::Variant.any_instance.stub(:ensure_color_code)
+      Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+      Spree::Order.any_instance.stub(:send_product_review_email)
+      Spree::Order.any_instance.stub(:update_newgistics_shipment_address)
+      Spree::Order.any_instance.stub(:update_newgistics_shipment_status)
+    end
+
     context "when newgistics status differs" do
       let(:order) { create :order, newgistics_status: 'ONVHOLD', state: 'complete' }
       let(:response) do [{

@@ -64,12 +64,12 @@ module Workers
 
           state_id = states[shipment['State']].try(:id)
           if state_id.nil?
-            log << "Could not find the state with abbreviation=%s when processing order %s" % [shipments['State'], order.number]
+            log << "Could not find the state with abbreviation=%s when processing order %s\n" % [shipments['State'], order.number]
           end
 
           country_id = countries[shipment['Country']].try(:id)
           if country_id.nil?
-            log << "Could not find the country %s when processing order %s" % [shipments['Country'], order.number]
+            log << "Could not find the country %s when processing order %s\n" % [shipments['Country'], order.number]
           end
 
           attributes = {
@@ -98,6 +98,8 @@ module Workers
             order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
             order.save!
 
+            log << "Order cancel #{order_canceled}\n"
+            log << "Order shipped #{order_shipped}\n"
             order.cancel!(:send_email => "true") if order_canceled
             if order_shipped
               order.shipments.update_all({tracking: shipment['Tracking'],
