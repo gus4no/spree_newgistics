@@ -62,7 +62,7 @@ describe "out_of_stock" do
       expect(order.shipments.first.manifest.first.variant).to eq(li.variant)
     end
 
-    it "should not increase counf of items twice" do
+    it "should not increase count of items twice" do
       si = order.line_items.first.variant.stock_items.first 
       expect(si.count_on_hand).to eq(1)
       5.times do 
