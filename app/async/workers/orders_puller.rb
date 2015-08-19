@@ -98,8 +98,6 @@ module Workers
             order_shipped = order.changed.include?("newgistics_status") && order.newgistics_status == "SHIPPED"
             order.save!
 
-            log << "Order cancel #{order_canceled}\n"
-            log << "Order shipped #{order_shipped}\n"
             order.cancel!(:send_email => "true") if order_canceled
             if order_shipped
               order.shipments.update_all({tracking: shipment['Tracking'],
