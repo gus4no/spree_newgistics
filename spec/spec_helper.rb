@@ -54,6 +54,7 @@ require 'spree_newgistics/factories'
 
 RSpec.configure do |config|
   config.include FactoryGirl::Syntax::Methods
+  FactoryGirl.find_definitions
 
   # Infer an example group's spec type from the file location.
   config.infer_spec_type_from_file_location!
