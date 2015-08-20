@@ -6,6 +6,71 @@ describe Workers::InventoryPuller do
     Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
   end
 
+  describe '#perform' do
+    let(:fake_response) { double('Response').as_null_object }
+
+    before do
+      allow(Spree::Newgistics::HTTPManager).to receive(:get) { fake_response }
+    end
+
+    context 'when inventory response is successful' do
+      before do
+        fake_response.stub status: 200, body: <<-XML
+          <?xml version="1.0"?>
+          <response>
+            <products>
+              <product id="78388" sku="PRODUCT-SKU-001">
+                <currentQuantity>19901</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>19901</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-002">
+                <currentQuantity>15</currentQuantity>
+                <pendingQuantity>3</pendingQuantity>
+                <availableQuantity>12</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-003">
+                <currentQuantity>432</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>432</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-004">
+                <currentQuantity>0</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>0</availableQuantity>
+                <backorderedQuantity>2</backorderedQuantity>
+              </product>
+            </products>
+            <errors></errors>
+          </response>
+        XML
+      end
+
+      it 'updates the inventory' do
+        expect(subject).to receive :update_inventory
+        subject.perform
+      end
+
+    end
+
+    context 'when inventory response is unsuccessful' do
+
+      before do
+        fake_response.stub status: 422
+      end
+
+      it 'does not update the inventory' do
+        expect(subject).not_to receive :update_inventory
+        subject.perform
+      end
+
+    end
+
+  end
+
   describe "#update_inventory" do
     context "when variant's stock items change from 0 to greater than 0" do
 
