@@ -72,6 +72,70 @@ describe Workers::InventoryPuller do
   end
 
   describe "#update_inventory" do
+
+    context "when variant's stock item is less than 0" do
+      let(:variant) { create :variant, sku: '1234' }
+
+      before do
+        variant
+      end
+
+      context 'because ng availableQuantity is below 0' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"-1",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        it 'sends a slack message' do
+          expect(Alerts).to receive(:slack_notify)
+          subject.update_inventory(response)
+        end
+      end
+
+      context 'because stock item count on hand is below 0' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"6",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        let(:stock_item) { double('StockItem').as_null_object }
+
+        before do
+          Spree::Variant.any_instance.stub_chain(:stock_items, :find_by) { stock_item }
+          stock_item.stub count_on_hand: -1
+        end
+
+        it 'sends a slack message' do
+          expect(Alerts).to receive(:slack_notify)
+          subject.update_inventory(response)
+        end
+      end
+    end
+
     context "when variant's stock items change from 0 to greater than 0" do
 
       let(:variant) { create :variant, sku: '1234' }
