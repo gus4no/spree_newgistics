@@ -1,6 +1,8 @@
 SpreeNewgistics
 ===============
 
+[![Build status](https://badge.buildkite.com/b08d3b31fd01cdcadd62297e2cc8a8fdd261b51fc53e03f221.svg)](https://buildkite.com/foxcommerce/spree-newgistics)
+
 Introduction goes here.
 
 Installation
@@ -34,6 +36,12 @@ Simply add this require statement to your spec_helper:
 
 ```ruby
 require 'spree_newgistics/factories'
+```
+
+If you'd like to enable/disable sending requests to newgistics on any environment (only disabled by default for test) run:
+
+```shell
+export ENABLE_NEWGISTICS=true
 ```
 
 Copyright (c) 2014 [name of extension creator], released under the New BSD License

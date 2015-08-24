@@ -1,7 +1,7 @@
 # Run Coverage report
 require 'simplecov'
 require 'faraday'
-require 'vcr'
+
 SimpleCov.start do
   add_filter 'spec/dummy'
   add_group 'Controllers', 'app/controllers'
@@ -12,23 +12,27 @@ SimpleCov.start do
   add_group 'Libraries', 'lib'
 end
 
-VCR.configure do |c|
-  c.hook_into :faraday
-  c.configure_rspec_metadata!
-  c.cassette_library_dir                    = 'spec/cassettes'
-  c.allow_http_connections_when_no_cassette = true
-  c.default_cassette_options                = { allow_playback_repeats: true, match_requests_on: [:method, :uri, :headers] }
-end
-
 ##require workers
 Dir.glob(File.join(File.dirname(__FILE__), '../../app/async/*.rb')) do |c|
   Rails.configuration.cache_classes ? require(c) : load(c)
 end
 
+require 'sidekiq/testing'
+require 'sidekiq/testing/inline'
+require 'sidekiq-status'
+require 'sidekiq-status/testing/inline'
+Sidekiq::Testing.fake!
+Sidekiq::Testing.inline!
+
 # Configure Rails Environment
 ENV['RAILS_ENV'] = 'test'
 
-require File.expand_path('../dummy/config/environment.rb',  __FILE__)
+dummy_env = File.expand_path('../dummy/config/environment.rb',  __FILE__)
+if File.exists? dummy_env
+  require dummy_env
+else
+  raise RuntimeError.new "spec/dummy is missing, create it with bundle exec rake"
+end
 
 require 'rspec/rails'
 require 'database_cleaner'
@@ -50,6 +54,7 @@ require 'spree_newgistics/factories'
 
 RSpec.configure do |config|
   config.include FactoryGirl::Syntax::Methods
+  FactoryGirl.find_definitions
 
   # Infer an example group's spec type from the file location.
   config.infer_spec_type_from_file_location!

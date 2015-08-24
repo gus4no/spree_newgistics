@@ -1,7 +1,11 @@
 require 'spec_helper'
-require 'pry'
 
 describe Spree::Order do
+
+  before(:each) do
+    Spree::Variant.any_instance.stub(:ensure_color_code)
+    Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+  end
 
   success_adapter = Faraday.new do |builder|
     builder.adapter :test do |stub|
@@ -21,6 +25,7 @@ describe Spree::Order do
 
     before(:each) do
       Spree::Newgistics::HTTPManager.stub(:adapter).and_return(success_adapter)
+      Spree::Variant.any_instance.stub(:can_post_to_newgistics).and_return(true)
       @variant = create(:variant)
     end
 

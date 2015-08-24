@@ -16,7 +16,6 @@ module Spree
 
       @@product_attributes = {
           sku: :sku,
-          description: :description,
           width: :width,
           height: :height,
           weight: :weight,
@@ -41,7 +40,7 @@ module Spree
             phone: [:order, :ship_address, :phone]
           },
           order_date: [:order, :completed_at, { strftime: '%m/%d/%Y' }],
-          ship_method: 'UPSG',
+          ship_method: [:shipping_method, :admin_name],
           items: :line_items
       }
 
@@ -67,7 +66,6 @@ module Spree
         country: [:ship_address, :country, :iso],
         email: [:email],
         phone: [:ship_address, :phone],
-        ship_method: 'UPSG',
         status: 'UPDATED',
         status_notes: 'Address updated'
 

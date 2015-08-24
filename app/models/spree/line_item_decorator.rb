@@ -1,10 +1,10 @@
 Spree::LineItem.class_eval do
 
-  after_create :add_to_newgistics_shipment_contents, if: lambda {|line_item| line_item.order.posted_to_newgistics? }
+  after_create :add_to_newgistics_shipment_contents, if: lambda {|line_item| line_item.order.can_update_newgistics? }
 
-  after_destroy :remove_from_newgistics_shipment_contents, if: lambda {|line_item| line_item.order.posted_to_newgistics? }
+  after_destroy :remove_from_newgistics_shipment_contents, if: lambda {|line_item| line_item.order.can_update_newgistics? }
 
-  after_update :update_newgistics_shipment_contents, if: lambda { |line_item| line_item.quantity_changed? && line_item.order.posted_to_newgistics?}
+  after_update :update_newgistics_shipment_contents, if: lambda { |line_item| line_item.quantity_changed? && line_item.order.can_update_newgistics?}
 
 
   ## after a line item is added to the order and if the order state is completed, update newgistics   ## shipment.
