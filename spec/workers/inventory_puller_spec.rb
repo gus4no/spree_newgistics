@@ -134,6 +134,34 @@ describe Workers::InventoryPuller do
           subject.update_inventory(response)
         end
       end
+
+      context 'when slack notification fails' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"-1",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        let(:log) { double('Log').as_null_object }
+
+        it 'logs an error' do
+          allow(File).to receive(:open) { log }
+          expect(Alerts).to receive(:slack_notify) { false }
+          expect(log).to receive(:<<).with "CRITICAL: Can't send slack notification, please check settings\n"
+          subject.update_inventory(response)
+        end
+      end
     end
 
     context "when variant's stock items change from 0 to greater than 0" do
