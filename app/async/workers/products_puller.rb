@@ -70,7 +70,7 @@ module Workers
         begin
           spree_variant = Spree::Variant.find_by_sku(product['sku'])
 
-          item_category_id = item_category_from(product['supplier'], spree_categories)
+          item_category_id = item_category_id_from(product['supplier'], spree_categories)
 
           shipping_category_id = hazardous_category_id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
 
