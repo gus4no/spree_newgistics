@@ -79,9 +79,6 @@ describe Workers::ProductsPuller do
   end
 
   describe "#save_products" do
-    before do
-      subject.stub :item_category_from
-    end
 
     let(:fake_category) {Struct.new(:id)}
 
@@ -110,6 +107,7 @@ describe Workers::ProductsPuller do
         variant # to load variant in database
 
         expect(subject).to receive(:update_variant)
+        expect(subject).to receive(:item_category_id_from)
         subject.save_products(response)
       end
     end
