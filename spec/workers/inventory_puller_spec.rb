@@ -6,7 +6,164 @@ describe Workers::InventoryPuller do
     Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
   end
 
+  describe '#perform' do
+    let(:fake_response) { double('Response').as_null_object }
+
+    before do
+      allow(Spree::Newgistics::HTTPManager).to receive(:get) { fake_response }
+    end
+
+    context 'when inventory response is successful' do
+      before do
+        fake_response.stub status: 200, body: <<-XML
+          <?xml version="1.0"?>
+          <response>
+            <products>
+              <product id="78388" sku="PRODUCT-SKU-001">
+                <currentQuantity>19901</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>19901</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-002">
+                <currentQuantity>15</currentQuantity>
+                <pendingQuantity>3</pendingQuantity>
+                <availableQuantity>12</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-003">
+                <currentQuantity>432</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>432</availableQuantity>
+                <backorderedQuantity>0</backorderedQuantity>
+              </product>
+              <product id="78389" sku="PRODUCT-SKU-004">
+                <currentQuantity>0</currentQuantity>
+                <pendingQuantity>0</pendingQuantity>
+                <availableQuantity>0</availableQuantity>
+                <backorderedQuantity>2</backorderedQuantity>
+              </product>
+            </products>
+            <errors></errors>
+          </response>
+        XML
+      end
+
+      it 'updates the inventory' do
+        expect(subject).to receive :update_inventory
+        subject.perform
+      end
+
+    end
+
+    context 'when inventory response is unsuccessful' do
+
+      before do
+        fake_response.stub status: 422
+      end
+
+      it 'does not update the inventory' do
+        expect(subject).not_to receive :update_inventory
+        subject.perform
+      end
+
+    end
+
+  end
+
   describe "#update_inventory" do
+
+    context "when variant's stock item is less than 0" do
+      let(:variant) { create :variant, sku: '1234' }
+
+      before do
+        variant
+      end
+
+      context 'because ng availableQuantity is below 0' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"-1",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        it 'sends a slack message' do
+          expect(Alerts).to receive(:slack_notify)
+          subject.update_inventory(response)
+        end
+      end
+
+      context 'because stock item count on hand is below 0' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"6",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        let(:stock_item) { double('StockItem').as_null_object }
+
+        before do
+          Spree::Variant.any_instance.stub_chain(:stock_items, :find_by) { stock_item }
+          stock_item.stub count_on_hand: -1
+        end
+
+        it 'sends a slack message' do
+          expect(Alerts).to receive(:slack_notify)
+          subject.update_inventory(response)
+        end
+      end
+
+      context 'when slack notification fails' do
+        let(:response) do
+          [
+            {
+              "id"=>"1148187",
+              "sku"=>"1234",
+              "currentQuantity"=>"6",
+              "receivingQuantity"=>"0",
+              "arrivedPutAwayQuantity"=>"0",
+              "kittingQuantity"=>"0",
+              "returnsQuantity"=>"0",
+              "pendingQuantity"=>"0",
+              "availableQuantity"=>"-1",
+              "backorderedQuantity"=>"0"
+            }
+          ]
+        end
+
+        let(:log) { double('Log').as_null_object }
+
+        it 'logs an error' do
+          allow(File).to receive(:open) { log }
+          expect(Alerts).to receive(:slack_notify) { false }
+          expect(log).to receive(:<<).with "CRITICAL: Can't send slack notification, please check settings\n"
+          subject.update_inventory(response)
+        end
+      end
+    end
+
     context "when variant's stock items change from 0 to greater than 0" do
 
       let(:variant) { create :variant, sku: '1234' }
