@@ -19,7 +19,7 @@ module Workers
           save_products(products.values.flatten)
         end
       else
-        Spree::Newgistics::Import.find_or_create_by(job_id: job_id,  details: 'Newgistics request failed')
+        Spree::Newgistics::Import.find_or_create_by(job_id: jid,  details: 'Newgistics request failed')
       end
     end
 
