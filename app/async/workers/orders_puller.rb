@@ -64,10 +64,10 @@ module Workers
 
           state_id = states[shipment['State']].try(:id)
           if state_id.nil?
-            log << "Could not find the state with abbreviation=%s, trying to find by name.\n" % [shipments['State']]
+            log << "Could not find the state with abbreviation=%s, trying to find by name.\n" % [shipment['State']]
             state = Spree::State.find_by(name: shipment['State'])
             if state.present?
-              log << "Found the state with name=%s.\n" % [shipments['State']]
+              log << "Found the state with name=%s.\n" % [shipment['State']]
               state_id = state.id
             else
               log << "Could not find the state with abbreviation=%s when processing order %s\n" % [shipments['State'], order.number]
