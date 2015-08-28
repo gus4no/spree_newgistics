@@ -1,12 +1,15 @@
 Spree::StateChange.class_eval do
 
+
+
   def newgistics_status
     #Change only between UPDATED and ONHOLD, which seems to be the only relevant statuses
     #for shipments updates via api, every other status code change belong to newgisitcs.
     { paid: 'UPDATED',
       balance_due: 'ONHOLD',
       failed: 'ONHOLD',
-      canceled: 'CANCELED'}[next_state.to_sym] || ''
+      canceled: 'CANCELED',
+      shipped: 'SHIPPED'}[next_state.to_sym] || ''
   end
 
   def newgistics_status_notes

@@ -1,2 +1,4 @@
-require 'sidekiq/scheduler'
-Sidekiq.schedule = YAML.load_file(File.expand_path("../../../config/sidekiq-schedule.yml",__FILE__))
+require 'sidekiq'
+require 'sidekiq-unique-jobs'
+
+SidekiqUniqueJobs.config.unique_args_enabled = true

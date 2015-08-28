@@ -2,6 +2,11 @@ require 'spec_helper'
 
 describe Spree::Order do
 
+  before(:each) do
+    Spree::Variant.any_instance.stub(:ensure_color_code)
+    Spree::Variant.any_instance.stub(:enqueue_product_for_reindex)
+  end
+
   success_adapter = Faraday.new do |builder|
     builder.adapter :test do |stub|
       post_shipment = File.read(File.expand_path('spec/faraday/post_shipment.txt'))
@@ -38,14 +43,18 @@ describe Spree::Order do
     end
 
     it 'posts the order to newgistics' do
+      Workers::OrderPoster.should_receive(:perform_async)
       order.post_to_newgistics
-      expect(order.posted_to_newgistics).to be_truthy
+      #expect(order.posted_to_newgistics).to be_truthy
     end
 
     it 'updates the shipment address' do
+      order.stub(:posted_to_newgistics?).and_return true
+      Workers::OrderAddressUpdater.should_receive(:perform_async)
+      expect(order.ship_address_id).not_to eq(1)
       order.ship_address_id = 1
       order.save
-      expect(order.newgistics_status).to eq('UPDATED')
+      #expect(order.newgistics_status).to eq('UPDATED')
     end
 
     it 'updates the shipment contents after creating a line item' do
@@ -62,7 +71,7 @@ describe Spree::Order do
       li.save
     end
 
-    it 'removes contnet after line item is updated' do
+    it 'removes content after line item is updated' do
       order.stub(:posted_to_newgistics?).and_return true
       order.should_receive(:remove_newgistics_shipment_content)
       li = order.line_items.first
@@ -70,11 +79,47 @@ describe Spree::Order do
       li.save
     end
 
-    it 'updates the shipment contents after creating a line item' do
+    it 'updates the shipment contents after destroying a line item' do
       order.stub(:posted_to_newgistics?).and_return true
       order.should_receive(:remove_newgistics_shipment_content)
       order.line_items.last.destroy
     end
+
+    it 'updates the shipment contents after destroying a line item via controller' do
+      # see Spree::OrderContents#remove
+      order.stub(:posted_to_newgistics?).and_return true
+      order.should_receive(:remove_newgistics_shipment_content)
+      line_item = order.line_items.last
+      line_item.quantity = 0
+      line_item.destroy
+    end
+
+    it 'updates the shipment after update a line item via controller' do
+      order.stub(:posted_to_newgistics?).and_return true
+      order.should_receive(:add_newgistics_shipment_content)
+      line_item = order.line_items.last
+      qty = line_item.quantity
+
+      li_attrs = { line_items_attributes: {
+            id: line_item.id,
+            quantity: qty + 1
+      } }
+      order.contents.update_cart(li_attrs)
+      expect(line_item.reload.quantity).to eq(qty+1)
+    end
+
+    it 'starts status sync on order cancelation' do
+      order.stub(:posted_to_newgistics?).and_return true
+      Workers::OrderStatusUpdater.should_receive(:perform_async).at_least(:once)
+      order.cancel!
+    end
+
+    it 'don\'t start status sync on order cancelation if order is not posted to newgistics' do
+      order.stub(:posted_to_newgistics?).and_return false
+      Workers::OrderStatusUpdater.should_not_receive(:perform_async)
+      order.cancel!
+    end
+
   end
 
   context 'failed requests' do
@@ -87,26 +132,27 @@ describe Spree::Order do
     end
 
     it 'fails posting the order to newgistics' do
-      order.post_to_newgistics
+      expect { order.post_to_newgistics }.to raise_error(RuntimeError)
       expect(order.posted_to_newgistics).to be_falsy
     end
 
     it 'enqueues an order updater for retry' do
-      Workers::OrderUpdater.should_receive(:perform_async)
+      Workers::OrderAddressUpdater.should_receive(:perform_async)
+      order.stub(:posted_to_newgistics?).and_return true
       order.ship_address_id = 1
       order.save
     end
 
 
     it 'equeues shipment contents updates after creating a line item' do
-      Workers::OrderUpdater.should_receive(:perform_async)
+      Workers::OrderContentsUpdater.should_receive(:perform_async)
       order.stub(:posted_to_newgistics?).and_return true
       order.line_items.create!(variant_id: 1, quantity: 1)
     end
 
     it 'equeues adding contnet after line item is updated' do
       order.stub(:posted_to_newgistics?).and_return true
-      Workers::OrderUpdater.should_receive(:perform_async)
+      Workers::OrderContentsUpdater.should_receive(:perform_async)
       li = order.line_items.first
       li.quantity = li.quantity + 1
       li.save
@@ -114,7 +160,7 @@ describe Spree::Order do
 
     it 'enqueues removing contnet after line item is updated' do
       order.stub(:posted_to_newgistics?).and_return true
-      Workers::OrderUpdater.should_receive(:perform_async)
+      Workers::OrderContentsUpdater.should_receive(:perform_async)
       li = order.line_items.first
       li.quantity = li.quantity - 1
       li.save
@@ -122,7 +168,7 @@ describe Spree::Order do
 
     it 'enqueues updating the shipment contents after creating a line item' do
       order.stub(:posted_to_newgistics?).and_return true
-      Workers::OrderUpdater.should_receive(:perform_async)
+      Workers::OrderContentsUpdater.should_receive(:perform_async)
       order.line_items.last.destroy
     end
   end
