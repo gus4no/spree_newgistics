@@ -13,6 +13,7 @@ module Workers
       if !order.posted_to_newgistics
         log << "Order is being sent to Newgistics\n"
         document = Spree::Newgistics::DocumentBuilder.build_shipment(order.shipments)
+        log << "Document: #{document.inspect}\n"
         response = Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
         if update_success?(response, order.number)
           log << "NG responded with status #{response.status}, processing order\n"
